@@ -7,6 +7,9 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Description>Monitor and receive notifications on record table change</Description>
     <Product>$(AssemblyName)</Product>
+    <Copyright>$([System.DateTime]::Now.Year) Jatin Dave</Copyright>
+    <AssemblyVersion></AssemblyVersion>
+    <FileVersion>1.1.0.0</FileVersion>
   </PropertyGroup>
 
 </Project>
