@@ -1,0 +1,15 @@
+﻿This extension is optimized for code-first approach.
+
+This is infromation and script that can be used to load existing database tbales definition to Entity classes.
+Loadded db model has to be updated to follow required entity classes structure like: 
+public class TableName : BaseEntity
+
+More information:
+https://www.entityframeworktutorial.net/efcore/create-model-for-existing-database-in-ef-core.aspx
+https://docs.microsoft.com/en-us/ef/core/cli/powershell
+
+PMC script for db firts scaffolding:
+
+PM> Scaffold-DbContext "Server=.\SQLExpress;Database=SQLEFTableNotification;Trusted_Connection=True;" Microsoft.EntityFrameworkCore.SqlServer -OutputDir Entity -DataAnnotations -NoPluralize
+
+PM> Scaffold-DbContext "Server=.\SQLExpress;Database=SQLEFTableNotification;Trusted_Connection=True;" Microsoft.EntityFrameworkCore.SqlServer -OutputDir Entity -DataAnnotations -NoPluralize -Tables "Table1","Table2"

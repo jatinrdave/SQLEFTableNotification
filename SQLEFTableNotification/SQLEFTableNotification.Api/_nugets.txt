@@ -1,0 +1,46 @@
+﻿//
+//NOTE: All packages will be installed automatically by VS with proper versions
+//
+
+More info: https://www.anasoft.net/apincore
+______________________________________________________________
+
+dotnet restore
+
+https://www.nuget.org/packages/Microsoft.AspNetCore
+install-Package Microsoft.AspNetCore
+
+https://www.nuget.org/packages/Microsoft.AspNetCore.Mvc/
+PM> Install-Package Microsoft.AspNetCore.Mvc
+
+https://www.nuget.org/packages/automapper/
+PM> Install-Package AutoMapper
+
+https://www.newtonsoft.com/json
+PM> Install-Package Microsoft.AspNetCore.Mvc.NewtonsoftJson  
+//required when use this db provider
+Install-Package Microsoft.EntityFrameworkCore.InMemory
+
+PM> Install-Package Serilog.AspNetCore -DependencyVersion Highest
+PM> Install-Package Serilog.Sinks.Console
+PM> Install-Package Serilog.Sinks.File
+PM> Install-Package Serilog.Sinks.Loggly
+PM> Install-Package Serilog.Settings.Configuration
+
+PM> Install-Package Swashbuckle.AspNetCore  
+
+-------------
+Serilog Logger
+https://github.com/serilog/serilog-aspnetcore
+https://itnext.io/loggly-in-asp-net-core-using-serilog-dc0e2c7d52eb
+https://www.blinkingcaret.com/2018/02/14/net-core-console-logging/
+https://nblumhardt.com/2017/08/use-serilog/
+https://github.com/loggly/log4net-loggly/#net-core-support
+-------------
+
+PM> Install-Package IdentityServer4.AccessTokenValidation
+
+
+-www.anasoft.net/apincore
+
+

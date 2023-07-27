@@ -1,0 +1,45 @@
+﻿//NOTE: all packages will be installed automatically by VS with proper versions
+
+https://www.nuget.org/packages/Microsoft.EntityFrameworkCore/ 
+PM> Install-Package Microsoft.EntityFrameworkCore  
+
+PM> Install-Package Microsoft.EntityFrameworkCore.InMemory  
+PM> Install-Package Microsoft.EntityFrameworkCore.SqlServer  
+PM> Install-Package Microsoft.EntityFrameworkCore.Tools  
+
+https://www.nuget.org/packages/Microsoft.AspNet.Identity.EntityFramework/
+//PM>Install-Package Microsoft.AspNet.Identity.EntityFramework
+
+https://www.newtonsoft.com/json
+PM> Install-Package Microsoft.AspNetCore.Mvc.NewtonsoftJson  
+
+https://docs.microsoft.com/en-us/ef/core/querying/related-data
+https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.Proxies
+PM> Install-Package Microsoft.EntityFrameworkCore.Proxies  
+
+https://www.learnentityframeworkcore.com/migrations
+
+--add new migration
+PM>add-migration AddNewMigration
+--remove last one
+PM>remove-migration  
+--update db
+PM>update-database
+--update database to specific migration
+PM>update-database AddNewMigration
+
+STEPS:
+PM> update-database 20180708205028_InitialCreate
+PM> add-migration AddNewMigration
+PM> update-database
+
+
+/// Designed by AnaSoft Inc. 2019-2020
+/// http://www.anasoft.net/apincore 
+/// 
+/// Download full version from http://www.anasoft.net/apincore with these added features:
+/// -XUnit integration tests project (update the connection string and run tests)
+/// -API Postman tests as json file
+/// -JWT and IS4 authentication tests
+/// -T4 for smart code generation for new entities views, services, controllers and tests 
+

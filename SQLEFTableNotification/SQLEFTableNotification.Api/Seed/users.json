@@ -1,0 +1,14 @@
+[{
+    "Created": "1/1/2018",
+    "Modified": "1/1/2018",
+    "FirstName": "TestF",
+    "LastName": "TestF",
+    "UserName": "my@email.com",
+    "Email": "my@email.com",
+    "Description": " ",
+    "IsAdminRole": true,
+    "Roles": "Administrator",
+    "IsActive": true,
+    "Password": "peaRlg4IIkOWvH2ZF0NjIJHr/CrykSgt5u6wsolkFNCwYoJJEPJ1fZryeBaxcpLZ",
+    "AccountId": 1
+}]
