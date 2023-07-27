@@ -5,7 +5,7 @@ using SQLEFTableNotification.Domain.Service;
 using SQLEFTableNotification.Entity;
 using SQLEFTableNotification.Entity.Entity;
 using SQLEFTableNotification.Entity.UnitofWork;
-using SQLEFTableNotificationLib.Interfaces;
+using SQLEFTableNotification.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;

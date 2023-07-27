@@ -11,7 +11,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLEFTableNotification.Enti
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLEFTableNotification.Console", "SQLEFTableNotification.Console\SQLEFTableNotification.Console.csproj", "{16C1CEE8-C8FB-4FEB-8E83-8A69837B3AF4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLEFTableNotificationLib", "SQLEFTableNotificationLib\SQLEFTableNotificationLib.csproj", "{FF0EADA9-50F9-4DBF-A701-2BC48D6B1E70}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLEFTableNotification", "SQLEFTableNotificationLib\SQLEFTableNotification.csproj", "{FF0EADA9-50F9-4DBF-A701-2BC48D6B1E70}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

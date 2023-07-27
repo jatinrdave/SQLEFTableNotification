@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SQLEFTableNotificationLib.Models
+namespace SQLEFTableNotification.Models
 {
     public class ErrorEventArgs //: DBBaseEventArgs
     {
@@ -24,7 +24,7 @@ namespace SQLEFTableNotificationLib.Models
         //string database,
         //string sender) : this("SQL monitoring stopped working", e, server, database, sender)
         {
-            this.Error = e;
+            Error = e;
         }
 
         public ErrorEventArgs(
@@ -34,8 +34,8 @@ namespace SQLEFTableNotificationLib.Models
         //string database,
         //string sender) : base(server, database, sender)
         {
-            this.Message = message;
-            this.Error = e;
+            Message = message;
+            Error = e;
         }
 
         #endregion

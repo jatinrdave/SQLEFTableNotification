@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SQLEFTableNotificationLib.Interfaces
+namespace SQLEFTableNotification.Interfaces
 {
     public interface IChangeTableService<T>
     {

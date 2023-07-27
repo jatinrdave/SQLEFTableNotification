@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SQLEFTableNotificationLib.Services
+namespace SQLEFTableNotification.Services
 {
     public sealed class ScheduledJobTimer : IDisposable
     {
@@ -31,13 +31,13 @@ namespace SQLEFTableNotificationLib.Services
             _job = job;
             if (dueTime != DateTime.MinValue)
             {
-                this.DueTime = dueTime - DateTime.Now;
+                DueTime = dueTime - DateTime.Now;
             }
-            if (this.DueTime < TimeSpan.Zero)
+            if (DueTime < TimeSpan.Zero)
             {
-                this.DueTime = TimeSpan.Zero;
+                DueTime = TimeSpan.Zero;
             }
-            this.Period = period;
+            Period = period;
 
             AutoDispose = true;
             //App.DisposeService.Register(this.GetType(), this);
@@ -67,18 +67,18 @@ namespace SQLEFTableNotificationLib.Services
                 }
                 finally
                 {
-                    this.PreviousExecuteTime = DateTime.Now;
-                    if (this.Period == Timeout.InfiniteTimeSpan)
+                    PreviousExecuteTime = DateTime.Now;
+                    if (Period == Timeout.InfiniteTimeSpan)
                     {
-                        this.NextExecuteTime = DateTime.MinValue;  
+                        NextExecuteTime = DateTime.MinValue;
                         if (AutoDispose)
                         {
-                            this.Dispose();
+                            Dispose();
                         }
                     }
                     else
                     {
-                        this.NextExecuteTime = this.PreviousExecuteTime + this.Period;
+                        NextExecuteTime = PreviousExecuteTime + Period;
                     }
 
                     Interlocked.Exchange(ref _isRunning, 0);
@@ -90,11 +90,11 @@ namespace SQLEFTableNotificationLib.Services
         {
             if (_timer == null)
             {
-                _timer = new Timer(callback: Execute, state, this.DueTime, this.Period);
+                _timer = new Timer(callback: Execute, state, DueTime, Period);
             }
             else
             {
-                _timer.Change(this.DueTime, this.Period);
+                _timer.Change(DueTime, Period);
             }
         }
 

@@ -1,4 +1,4 @@
-﻿namespace SQLEFTableNotificationLib.Models
+﻿namespace SQLEFTableNotification.Models
 {
     public enum TableOperationStatus
     {

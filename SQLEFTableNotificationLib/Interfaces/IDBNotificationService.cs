@@ -1,11 +1,11 @@
-﻿using SQLEFTableNotificationLib.Delegates;
+﻿using SQLEFTableNotification.Delegates;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SQLEFTableNotificationLib.Interfaces
+namespace SQLEFTableNotification.Interfaces
 {
     public interface IDBNotificationService<T> where T : class, new()
     {

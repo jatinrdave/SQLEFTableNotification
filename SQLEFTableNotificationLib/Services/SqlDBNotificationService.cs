@@ -1,12 +1,12 @@
-﻿using SQLEFTableNotificationLib.Delegates;
-using SQLEFTableNotificationLib.Interfaces;
-using SQLEFTableNotificationLib.Models;
+﻿using SQLEFTableNotification.Delegates;
+using SQLEFTableNotification.Interfaces;
+using SQLEFTableNotification.Models;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SQLEFTableNotificationLib.Services
+namespace SQLEFTableNotification.Services
 {
     public class SqlDBNotificationService<TChangeTableEntity> : IDBNotificationService<TChangeTableEntity>, IDisposable where TChangeTableEntity : class, new()
     {

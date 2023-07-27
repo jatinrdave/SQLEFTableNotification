@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SQLEFTableNotificationLib\SQLEFTableNotificationLib.csproj" />
+    <ProjectReference Include="..\SQLEFTableNotificationLib\SQLEFTableNotification.csproj" />
     <ProjectReference Include="..\SQLEFTableNotification\SQLEFTableNotification.Domain\SQLEFTableNotification.Domain.csproj" />
   </ItemGroup>
 
