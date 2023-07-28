@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLEFTableNotification.Cons
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLEFTableNotification", "SQLEFTableNotificationLib\SQLEFTableNotification.csproj", "{FF0EADA9-50F9-4DBF-A701-2BC48D6B1E70}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLEFTableNotification.Tests", "SQLEFTableNotificationTests\SQLEFTableNotification.Tests.csproj", "{A09658A9-297E-4918-9241-0CB14C13F778}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{FF0EADA9-50F9-4DBF-A701-2BC48D6B1E70}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FF0EADA9-50F9-4DBF-A701-2BC48D6B1E70}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FF0EADA9-50F9-4DBF-A701-2BC48D6B1E70}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A09658A9-297E-4918-9241-0CB14C13F778}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A09658A9-297E-4918-9241-0CB14C13F778}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A09658A9-297E-4918-9241-0CB14C13F778}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A09658A9-297E-4918-9241-0CB14C13F778}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

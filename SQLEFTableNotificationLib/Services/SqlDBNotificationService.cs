@@ -8,6 +8,10 @@ using System.Threading.Tasks;
 
 namespace SQLEFTableNotification.Services
 {
+    /// <summary>
+    /// Monitor table record changes at specified interval and notify changes to subscriber.
+    /// </summary>
+    /// <typeparam name="TChangeTableEntity"></typeparam>
     public class SqlDBNotificationService<TChangeTableEntity> : IDBNotificationService<TChangeTableEntity>, IDisposable where TChangeTableEntity : class, new()
     {
 
@@ -35,6 +39,15 @@ namespace SQLEFTableNotification.Services
         #endregion
 
         #region Constructor
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="tableName">database table name to monitor</param>
+        /// <param name="connectionString">database connection string with credentials</param>
+        /// <param name="changeTableService">ChangeTableService which can read data from database.</param>
+        /// <param name="version">Specify initial SYS_CHANGE_VERSION</param>
+        /// <param name="period">Specify interval</param>
+        /// <param name="recordIdentifier">record identifier to avoid database changes for own(not implemented).</param>
         public SqlDBNotificationService(string tableName, string connectionString, IChangeTableService<TChangeTableEntity> changeTableService, long version = -1L, TimeSpan? period = null, string recordIdentifier = "WMWebAPI")
         {
             _changeContextName = recordIdentifier;

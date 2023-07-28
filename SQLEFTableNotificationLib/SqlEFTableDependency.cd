@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="SQLEFTableNotification.Services.SqlDBNotificationService&lt;TChangeTableEntity&gt;">
+    <Position X="3.5" Y="1.5" Width="3" />
+    <Compartments>
+      <Compartment Name="Fields" Collapsed="true" />
+    </Compartments>
+    <TypeIdentifier>
+      <HashCode>QAAAAAABASGgAAAAAIAAAAAAgACAAABYAAAAAAAaAIA=</HashCode>
+      <FileName>Services\SqlDBNotificationService.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>
