@@ -12,16 +12,16 @@ public class MainProgram
     /// The main entry point for the application.
     /// </summary>
     //[STAThread]
-    public static void Main()
+    public static async void Main()
     {
         var serviceProvider = new ServiceCollection()
                  .AddScoped(typeof(IChangeTableService<>), typeof(ChangeTableService<,>))
-
+                 .AddScoped<ISQLTableMonitorManager, SQLTableMonitorManager>()
         .BuildServiceProvider();
 
-        string connectionString = "";//From Config file.
-        var changeTableService = serviceProvider.GetRequiredService<IChangeTableService<UserChangeTable>>();
-        IDBNotificationService<UserChangeTable> sqlDBNotificationService = new SqlDBNotificationService<UserChangeTable>("User", connectionString, changeTableService, -1, TimeSpan.FromHours(1), "API");
-        sqlDBNotificationService.StartNotify();
+        ISQLTableMonitorManager tableMonitorManager = serviceProvider.GetRequiredService<ISQLTableMonitorManager>();
+        await tableMonitorManager.Invoke();
     }
+
+   
 }

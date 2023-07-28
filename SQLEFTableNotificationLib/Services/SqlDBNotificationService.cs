@@ -14,6 +14,9 @@ namespace SQLEFTableNotification.Services
     /// <typeparam name="TChangeTableEntity"></typeparam>
     public class SqlDBNotificationService<TChangeTableEntity> : IDBNotificationService<TChangeTableEntity>, IDisposable where TChangeTableEntity : class, new()
     {
+        /// <summary>
+        /// Refer articles https://www.mssqltips.com/sqlservertip/6762/sql-server-change-tracking-track-columns-updated/
+        /// </summary>
 
         #region members
         private const string Sql_CurrentVersion = @"SELECT ISNULL(CHANGE_TRACKING_CURRENT_VERSION(), 0) as VersionCount";

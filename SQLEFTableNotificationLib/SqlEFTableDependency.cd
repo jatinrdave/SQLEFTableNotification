@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <ClassDiagram MajorVersion="1" MinorVersion="1">
   <Class Name="SQLEFTableNotification.Services.SqlDBNotificationService&lt;TChangeTableEntity&gt;">
-    <Position X="3.5" Y="1.5" Width="3" />
+    <Position X="3.5" Y="1.5" Width="3.5" />
     <Compartments>
       <Compartment Name="Fields" Collapsed="true" />
     </Compartments>
@@ -11,5 +11,12 @@
     </TypeIdentifier>
     <Lollipop Position="0.2" />
   </Class>
+  <Interface Name="SQLEFTableNotification.Interfaces.IChangeTableService&lt;T&gt;">
+    <Position X="7.75" Y="1.5" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AEAAAAAAAIAgAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAA=</HashCode>
+      <FileName>Interfaces\IChangeTableService.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
   <Font Name="Segoe UI" Size="9" />
 </ClassDiagram>
