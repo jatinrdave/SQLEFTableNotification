@@ -12,7 +12,7 @@ public class MainProgram
     /// The main entry point for the application.
     /// </summary>
     //[STAThread]
-    public static async void Main()
+    public static void Main()
     {
         var serviceProvider = new ServiceCollection()
                  .AddScoped(typeof(IChangeTableService<>), typeof(ChangeTableService<,>))
@@ -20,7 +20,7 @@ public class MainProgram
         .BuildServiceProvider();
 
         ISQLTableMonitorManager tableMonitorManager = serviceProvider.GetRequiredService<ISQLTableMonitorManager>();
-        await tableMonitorManager.Invoke();
+        Task.Run( async()=> await tableMonitorManager.Invoke()).Wait();
     }
 
    
