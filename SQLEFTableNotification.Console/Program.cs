@@ -9,7 +9,6 @@ using SQLEFTableNotification.Domain;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using SQLEFTableNotification.Entity.Context;
-using AutoMapper;
 using SQLEFTableNotification.Console;
 public class MainProgram
 {
@@ -29,20 +28,11 @@ public class MainProgram
         var services = new ServiceCollection()
             .AddDbContext<SQLEFTableNotificationContext>(options =>
                 options.UseSqlServer(connectionString))
+            .AddScoped<IUnitOfWork, UnitOfWork>()
             .AddScoped<IChangeTableService<UserChangeTable>, ChangeTableService<UserChangeTable, UserViewModel>>()
-            .Scan(scan => scan
-                .FromApplicationDependencies()
-                .AddClasses()
-                .AsImplementedInterfaces()
-                .WithScopedLifetime());
-
-        // Register your mapping profiles here
-        services.AddAutoMapper(typeof(MappingProfile).Assembly); // Use assembly registration for AutoMapper
+            .AddScoped<ISQLTableMonitorManager, SQLTableMonitorManager>();
 
         var serviceProvider = services.BuildServiceProvider();
-
-        // Resolve IMapper, not MapperConfiguration
-        var mapper = serviceProvider.GetRequiredService<IMapper>();
 
         ISQLTableMonitorManager tableMonitorManager = serviceProvider.GetRequiredService<ISQLTableMonitorManager>();
         Task.Run(async () => await tableMonitorManager.Invoke()).Wait();
