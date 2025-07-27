@@ -17,7 +17,7 @@ namespace SQLEFTableNotification.Entity.Repository
         Task Update(object id, T entity);
 
         IQueryable<T> GetEntityWithRawSql(string query, params object[] parameters);
-        IQueryable<TViewModel> GetModelWithRawSql<TViewModel>(string query, params object[] parameters) where TViewModel : class;
+        // IQueryable<TViewModel> GetModelWithRawSql<TViewModel>(string query, params object[] parameters) where TViewModel : class; // Not supported in EF Core 5.0
         
     }
 }

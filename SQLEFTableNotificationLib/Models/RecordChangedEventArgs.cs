@@ -1,4 +1,6 @@
-﻿namespace SQLEFTableNotification.Models
+﻿using System.Collections.Generic;
+
+namespace SQLEFTableNotification.Models
 {
     public class RecordChangedEventArgs<T> where T : class, new()
     {

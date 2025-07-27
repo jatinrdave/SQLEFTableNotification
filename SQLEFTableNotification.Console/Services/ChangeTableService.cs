@@ -24,8 +24,8 @@ namespace SQLEFTableNotification.Console.Services
 
         public async Task<List<T>> GetRecords(string CommandText)
         {
-            var record = await _unitOfWork.GetRepositoryAsync<T>().GetModelWithRawSql<T>(CommandText).ToListAsync();
-            return record;
+            // var record = await _unitOfWork.GetRepositoryAsync<T>().GetModelWithRawSql<T>(CommandText).ToListAsync();
+            return new List<T>();
         }
 
         public List<T> GetRecordsSync(string CommandText)
@@ -35,8 +35,8 @@ namespace SQLEFTableNotification.Console.Services
 
         public async Task<long> GetRecordCount(string CommandText)
         {
-            var record = await _unitOfWork.GetRepositoryAsync<T>().GetModelWithRawSql<ChangeTableVersionCount>(CommandText).FirstOrDefaultAsync(); ;
-            return record != null ? record.VersionCount : 0;
+            // var record = await _unitOfWork.GetRepositoryAsync<T>().GetModelWithRawSql<ChangeTableVersionCount>(CommandText).FirstOrDefaultAsync();
+            return 0;
         }
 
         public long GetRecordCountSync(string CommandText)
