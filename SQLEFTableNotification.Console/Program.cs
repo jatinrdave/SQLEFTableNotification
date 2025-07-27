@@ -1,5 +1,4 @@
-﻿
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using SQLEFTableNotification.Console.Services;
 using SQLEFTableNotification.Entity.Entity;
 using SQLEFTableNotification.Interfaces;
@@ -10,7 +9,8 @@ using SQLEFTableNotification.Domain;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using SQLEFTableNotification.Entity.Context;
-
+using AutoMapper;
+using SQLEFTableNotification.Console;
 public class MainProgram
 {
     /// <summary>
@@ -20,13 +20,13 @@ public class MainProgram
     public static void Main()
     {
         var configuration = new ConfigurationBuilder()
-            .SetBasePath(System.IO.Directory.GetCurrentDirectory())
+            .SetBasePath(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "SQLEFTableNotification.Console"))
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
             .Build();
 
         var connectionString = configuration.GetConnectionString("DefaultConnection");
 
-        var serviceProvider = new ServiceCollection()
+        var services = new ServiceCollection()
             .AddDbContext<SQLEFTableNotificationContext>(options =>
                 options.UseSqlServer(connectionString))
             .AddScoped<IChangeTableService<UserChangeTable>, ChangeTableService<UserChangeTable, UserViewModel>>()
@@ -34,8 +34,15 @@ public class MainProgram
                 .FromApplicationDependencies()
                 .AddClasses()
                 .AsImplementedInterfaces()
-                .WithScopedLifetime())
-            .BuildServiceProvider();
+                .WithScopedLifetime());
+
+        // Register your mapping profiles here
+        services.AddAutoMapper(typeof(MappingProfile).Assembly); // Use assembly registration for AutoMapper
+
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Resolve IMapper, not MapperConfiguration
+        var mapper = serviceProvider.GetRequiredService<IMapper>();
 
         ISQLTableMonitorManager tableMonitorManager = serviceProvider.GetRequiredService<ISQLTableMonitorManager>();
         Task.Run(async () => await tableMonitorManager.Invoke()).Wait();
