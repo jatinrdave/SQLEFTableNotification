@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using SQLEFTableNotification.Entity.Context;
 using SQLEFTableNotification.Entity.UnitofWork;
 using System;
@@ -60,6 +60,12 @@ namespace SQLEFTableNotification.Entity.Repository
             if (entity != null) _unitOfWork.Context.Set<T>().Remove(entity);
         }
 
+        /// <summary>
+        /// Executes a raw SQL query and returns an <see cref="IQueryable{T}"/> of entities of type <typeparamref name="T"/>.
+        /// </summary>
+        /// <param name="query">The raw SQL query to execute.</param>
+        /// <param name="parameters">The parameters to apply to the SQL query.</param>
+        /// <returns>An <see cref="IQueryable{T}"/> representing the result set of the query.</returns>
         public IQueryable<T> GetEntityWithRawSql(string query, params object[] parameters)
         {
             return _unitOfWork.Context.Set<T>().FromSqlRaw(query, parameters);
