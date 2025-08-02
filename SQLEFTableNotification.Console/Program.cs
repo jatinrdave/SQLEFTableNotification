@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using SQLEFTableNotification.Console.Services;
 using SQLEFTableNotification.Entity.Entity;
 using SQLEFTableNotification.Interfaces;
@@ -15,7 +15,9 @@ public class MainProgram
     /// <summary>
     /// The main entry point for the application.
     /// </summary>
-    //[STAThread]
+    /// <summary>
+    /// Application entry point that configures services, loads application settings, sets up the database context, and starts the SQL table monitor manager.
+    /// </summary>
     public static void Main()
     {
         var configuration = new ConfigurationBuilder()

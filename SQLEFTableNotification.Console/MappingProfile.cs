@@ -6,6 +6,9 @@ namespace SQLEFTableNotification.Console
 {
 public class MappingProfile : Profile
 {
+    /// <summary>
+    /// Initializes mapping configurations between entity and view model types for use with AutoMapper.
+    /// </summary>
     public MappingProfile()
     {
         // Example mapping
