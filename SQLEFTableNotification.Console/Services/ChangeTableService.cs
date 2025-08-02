@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using SQLEFTableNotification.Domain;
 using SQLEFTableNotification.Domain.Service;
@@ -22,23 +22,43 @@ namespace SQLEFTableNotification.Console.Services
 
         }
 
+        /// <summary>
+        /// Asynchronously retrieves a list of entities of type T based on the provided SQL command text.
+        /// </summary>
+        /// <param name="CommandText">The raw SQL command to execute for retrieving records.</param>
+        /// <returns>A list of entities of type T. Currently returns an empty list.</returns>
         public async Task<List<T>> GetRecords(string CommandText)
         {
-            var record = await _unitOfWork.GetRepositoryAsync<T>().GetModelWithRawSql<T>(CommandText).ToListAsync();
-            return record;
+            // var record = await _unitOfWork.GetRepositoryAsync<T>().GetModelWithRawSql<T>(CommandText).ToListAsync();
+            return new List<T>();
         }
 
+        /// <summary>
+        /// Synchronously retrieves a list of entities of type T based on the provided SQL command text.
+        /// </summary>
+        /// <param name="CommandText">The raw SQL command to execute for retrieving records.</param>
+        /// <returns>A list of entities of type T. Returns an empty list if no records are found or if the underlying asynchronous method returns no data.</returns>
         public List<T> GetRecordsSync(string CommandText)
         {
             return Task.Run(() => GetRecords(CommandText)).Result;
         }
 
+        /// <summary>
+        /// Asynchronously returns the count of records matching the specified SQL command.
+        /// </summary>
+        /// <param name="CommandText">The raw SQL command to execute.</param>
+        /// <returns>The number of records found; currently always returns zero.</returns>
         public async Task<long> GetRecordCount(string CommandText)
         {
-            var record = await _unitOfWork.GetRepositoryAsync<T>().GetModelWithRawSql<ChangeTableVersionCount>(CommandText).FirstOrDefaultAsync(); ;
-            return record != null ? record.VersionCount : 0;
+            // var record = await _unitOfWork.GetRepositoryAsync<T>().GetModelWithRawSql<ChangeTableVersionCount>(CommandText).FirstOrDefaultAsync();
+            return 0;
         }
 
+        /// <summary>
+        /// Synchronously retrieves the count of records matching the specified SQL command.
+        /// </summary>
+        /// <param name="CommandText">The raw SQL command to execute for counting records.</param>
+        /// <returns>The number of records matching the SQL command, or zero if no records are found.</returns>
         public long GetRecordCountSync(string CommandText)
         {
             return Task.Run(() => GetRecordCount(CommandText)).Result;

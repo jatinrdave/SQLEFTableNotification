@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace SQLEFTableNotification.Entity.Entity
 {
-    public class UserChangeTable : ChangeTable, IEntityPk
+    public class UserChangeTable : BaseEntity, IEntityPk
     {
         public int Id { get; set; }
     }

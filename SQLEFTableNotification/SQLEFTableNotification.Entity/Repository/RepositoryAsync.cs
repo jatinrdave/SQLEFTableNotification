@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using SQLEFTableNotification.Entity.Context;
 using SQLEFTableNotification.Entity.UnitofWork;
 using System;
@@ -60,17 +60,24 @@ namespace SQLEFTableNotification.Entity.Repository
             if (entity != null) _unitOfWork.Context.Set<T>().Remove(entity);
         }
 
+        /// <summary>
+        /// Executes a raw SQL query and returns an <see cref="IQueryable{T}"/> of entities of type <typeparamref name="T"/>.
+        /// </summary>
+        /// <param name="query">The raw SQL query to execute.</param>
+        /// <param name="parameters">The parameters to apply to the SQL query.</param>
+        /// <returns>An <see cref="IQueryable{T}"/> representing the result set of the query.</returns>
         public IQueryable<T> GetEntityWithRawSql(string query, params object[] parameters)
         {
-            return _unitOfWork.Context.Database.SqlQueryRaw<T>(query, parameters);
+            return _unitOfWork.Context.Set<T>().FromSqlRaw(query, parameters);
         }
 
-        public IQueryable<TViewModel> GetModelWithRawSql<TViewModel>(string query, params object[] parameters) where TViewModel : class
-        {
-            return _unitOfWork.Context.Database.SqlQueryRaw<TViewModel>(query, parameters);
-
-        }
-
+        // EF Core 5.0 does not support raw SQL queries for non-entity types directly.
+        // You may need to map the results manually or use a tracked entity type.
+        // public IQueryable<TViewModel> GetModelWithRawSql<TViewModel>(string query, params object[] parameters) where TViewModel : class
+        // {
+        //     // Not supported in EF Core 5.0
+        //     throw new NotSupportedException("Raw SQL for non-entity types is not supported in EF Core 5.0");
+        // }
 
 
     }
