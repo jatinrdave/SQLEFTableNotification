@@ -20,22 +20,26 @@ namespace SQLEFTableNotification.Console.Services
 
     public class SQLTableMonitorManager : ISQLTableMonitorManager
     {
-        private readonly IChangeTableService<UserChangeTable> _changeTableService;
-        private readonly UserServiceAsync<UserViewModel, User> _userService;
+    private readonly IChangeTableService<UserChangeTable> _changeTableService;
+    private readonly UserServiceAsync<UserViewModel, User> _userService;
+    private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
 
         public SQLTableMonitorManager(IChangeTableService<UserChangeTable> changeTableService,UserServiceAsync<UserViewModel,User> userService)
         {
             _changeTableService = changeTableService;
             _userService = userService;
+            // Get configuration from DI
+            _configuration = (Microsoft.Extensions.Configuration.IConfiguration)AppDomain.CurrentDomain.GetData("Configuration");
         }
 
         public async Task Invoke()
         {
-            string connectionString = "";//From Config file.
-            IDBNotificationService<UserChangeTable> sqlDBNotificationService = new SqlDBNotificationService<UserChangeTable>("User", connectionString, _changeTableService, -1, TimeSpan.FromHours(1), "API");
+            string connectionString = _configuration.GetConnectionString("DefaultConnection");
+            string sourceSystem = _configuration["ChangeTracking:SourceSystem"] ?? "ConsoleApp";
+            IDBNotificationService<UserChangeTable> sqlDBNotificationService = new SqlDBNotificationService<UserChangeTable>("User", connectionString, _changeTableService, -1, TimeSpan.FromHours(1), sourceSystem);
             await sqlDBNotificationService.StartNotify();
             sqlDBNotificationService.OnChanged += SqlDBNotificationService_OnChanged;
-            sqlDBNotificationService.OnError += SqlDBNotificationService_OnError; 
+            sqlDBNotificationService.OnError += SqlDBNotificationService_OnError;
         }
 
         private async void SqlDBNotificationService_OnError(object sender, SQLEFTableNotification.Models.ErrorEventArgs e)

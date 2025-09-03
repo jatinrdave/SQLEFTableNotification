@@ -20,9 +20,10 @@ namespace SQLEFTableNotification.Services
         /// </summary>
 
         #region members
-        private const string Sql_CurrentVersion = @"SELECT ISNULL(CHANGE_TRACKING_CURRENT_VERSION(), 0) as VersionCount";
-        private const string Sql_TrackingOnChangeTable = @"SELECT ct.* FROM CHANGETABLE(CHANGES {0},{1}) ct WHERE  ct.SYS_CHANGE_VERSION <= {2}";
-        private readonly string _changeContextName;
+    private const string Sql_CurrentVersion = @"SELECT ISNULL(CHANGE_TRACKING_CURRENT_VERSION(), 0) as VersionCount";
+    // Now includes context filter
+    private const string Sql_TrackingOnChangeTable = @"SELECT ct.* FROM CHANGETABLE(CHANGES {0},{1}) ct WHERE ct.SYS_CHANGE_VERSION <= {2} AND (ct.SYS_CHANGE_CONTEXT IS NULL OR ct.SYS_CHANGE_CONTEXT <> @ChangeContext)";
+    private readonly string _changeContextName;
         private long _currentVersion;
         private ScheduledJobTimer _timer;
         private readonly TimeSpan _period;
@@ -116,8 +117,9 @@ namespace SQLEFTableNotification.Services
 
                 var buffer = new StringBuilder();
 
-                var commandText = string.Format(Sql_TrackingOnChangeTable, _tableName, _currentVersion, lastVersion, _changeContextName);
-                List<TChangeTableEntity> records = await _changeTableService.GetRecords(commandText);
+                var commandText = string.Format(Sql_TrackingOnChangeTable, _tableName, _currentVersion, lastVersion);
+                // Pass the context as a parameter to filter out changes from this system
+                var records = await _changeTableService.GetRecordsWithContext(commandText, _changeContextName);
                 if (records != null && records.Count > 0)
                 {
                     RecordChangedEventArgs<TChangeTableEntity> recordChangedEventArgs = new RecordChangedEventArgs<TChangeTableEntity>(records);// obj);

@@ -6,6 +6,14 @@ namespace SQLDBEntityNotifier
     /// Service for tracking and retrieving changes in a SQL table.
     /// </summary>
     public class ChangeTableService<T> : IChangeTableService<T> where T : class, new()
+        /// <summary>
+        /// Retrieves records with a context parameter for filtering.
+        /// </summary>
+        public async Task<List<T>> GetRecordsWithContext(string commandText, string context)
+        {
+            // Use FromSqlRaw with parameter to avoid SQL injection
+            return await _dbContext.Set<T>().FromSqlRaw(commandText, new Microsoft.Data.SqlClient.SqlParameter("@ChangeContext", context)).ToListAsync();
+        }
     {
         private readonly DbContext _dbContext;
 
