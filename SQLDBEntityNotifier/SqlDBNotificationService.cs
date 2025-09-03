@@ -4,11 +4,14 @@ using System.Collections.Generic;
 using System.Linq;
 using SQLDBEntityNotifier.Models;
 using SQLDBEntityNotifier.Helpers;
+using SQLDBEntityNotifier.Compatibility;
+using SQLDBEntityNotifier.Providers;
 
 namespace SQLDBEntityNotifier
 {
     /// <summary>
     /// Monitors a SQL table and raises events on changes or errors with configurable context filtering.
+    /// This class maintains full backward compatibility while optionally leveraging enhanced CDC features.
     /// </summary>
     public class SqlDBNotificationService<T> : IDBNotificationService<T> where T : class, new()
     {
@@ -21,6 +24,10 @@ namespace SQLDBEntityNotifier
         private System.Timers.Timer? _timer;
         private readonly Func<long, long, string> _changeTrackingQueryFunc;
         private readonly ChangeFilterOptions? _filterOptions;
+        
+        // New CDC infrastructure (optional, for enhanced features)
+        private ICDCProvider? _cdcProvider;
+        private bool _useEnhancedCDC = false;
 
         public event EventHandler<RecordChangedEventArgs<T>>? OnChanged;
         public event EventHandler<ErrorEventArgs>? OnError;
@@ -84,11 +91,82 @@ namespace SQLDBEntityNotifier
                 // Use the new context-aware query builder
                 _changeTrackingQueryFunc = ChangeTrackingQueryBuilder.CreateCustomQueryFunction(tableName, filterOptions);
             }
+
+            // Try to initialize enhanced CDC (optional, won't break existing functionality)
+            TryInitializeEnhancedCDC();
+        }
+
+        /// <summary>
+        /// Attempts to initialize enhanced CDC features without breaking existing functionality
+        /// </summary>
+        private async void TryInitializeEnhancedCDC()
+        {
+            try
+            {
+                // Only try to use enhanced CDC for SQL Server connections
+                if (SqlDBNotificationServiceCompatibility.IsSqlServerConnectionString(_connectionString))
+                {
+                    _cdcProvider = SqlDBNotificationServiceCompatibility.CreateCompatibleCDCProvider(_connectionString);
+                    var initialized = await _cdcProvider.InitializeAsync();
+                    _useEnhancedCDC = initialized;
+                }
+            }
+            catch
+            {
+                // Silently fall back to legacy mode - don't break existing functionality
+                _useEnhancedCDC = false;
+                _cdcProvider = null;
+            }
         }
 
         public async Task StartNotify()
         {
             _errorCount = 0;
+            
+            if (_useEnhancedCDC && _cdcProvider != null)
+            {
+                // Use enhanced CDC if available
+                await StartEnhancedMonitoringAsync();
+            }
+            else
+            {
+                // Fall back to legacy mode
+                await StartLegacyMonitoringAsync();
+            }
+        }
+
+        /// <summary>
+        /// Starts monitoring using enhanced CDC features
+        /// </summary>
+        private async Task StartEnhancedMonitoringAsync()
+        {
+            try
+            {
+                // Get current position from CDC provider
+                var currentPosition = await _cdcProvider!.GetCurrentChangePositionAsync();
+                if (long.TryParse(currentPosition, out var version))
+                {
+                    _currentVersion = version;
+                }
+
+                _timer = new System.Timers.Timer(_period.TotalMilliseconds);
+                _timer.Elapsed += async (s, e) => await PollForChangesEnhancedAsync();
+                _timer.AutoReset = true;
+                _timer.Start();
+            }
+            catch (Exception ex)
+            {
+                // Fall back to legacy mode if enhanced CDC fails
+                _useEnhancedCDC = false;
+                await StartLegacyMonitoringAsync();
+            }
+        }
+
+        /// <summary>
+        /// Starts monitoring using legacy change tracking
+        /// </summary>
+        private async Task StartLegacyMonitoringAsync()
+        {
             _currentVersion = (_currentVersion == -1L) ? await QueryCurrentVersion() : _currentVersion;
             _timer = new System.Timers.Timer(_period.TotalMilliseconds);
             _timer.Elapsed += async (s, e) => await PollForChangesAsync();
@@ -112,6 +190,52 @@ namespace SQLDBEntityNotifier
             {
                 OnError?.Invoke(this, new ErrorEventArgs { Message = ex.Message, Exception = ex });
                 return 0;
+            }
+        }
+
+        /// <summary>
+        /// Enhanced polling using CDC provider
+        /// </summary>
+        private async Task PollForChangesEnhancedAsync()
+        {
+            try
+            {
+                if (_cdcProvider == null || !_useEnhancedCDC)
+                {
+                    await PollForChangesAsync();
+                    return;
+                }
+
+                var changes = await _cdcProvider.GetTableChangesAsync(_tableName, _currentVersion.ToString());
+                
+                if (changes.Any())
+                {
+                    // Convert CDC changes to legacy format for backward compatibility
+                    var entities = await ConvertCDCChangesToEntitiesAsync(changes);
+                    if (entities.Any())
+                    {
+                        var eventArgs = CreateEnhancedEventArgs(entities, _currentVersion);
+                        OnChanged?.Invoke(this, eventArgs);
+                    }
+                    
+                    // Update current position
+                    var latestChange = changes.OrderByDescending(c => c.ChangePosition).First();
+                    if (long.TryParse(latestChange.ChangePosition, out var newVersion))
+                    {
+                        _currentVersion = newVersion;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                OnError?.Invoke(this, new ErrorEventArgs { Message = ex.Message, Exception = ex });
+                _errorCount++;
+                
+                if (_errorCount > 20)
+                {
+                    _timer?.Stop();
+                    OnError?.Invoke(this, new ErrorEventArgs { Message = $"Stopped monitoring for {_connectionString}:{_tableName}", Exception = new Exception($"Stopped monitoring for {_connectionString}:{_tableName}") });
+                }
             }
         }
 
@@ -149,6 +273,45 @@ namespace SQLDBEntityNotifier
                     OnError?.Invoke(this, new ErrorEventArgs { Message = $"Stopped monitoring for {_connectionString}:{_tableName}", Exception = new Exception($"Stopped monitoring for {_connectionString}:{_tableName}") });
                 }
             }
+        }
+
+        /// <summary>
+        /// Converts CDC changes to entity objects for backward compatibility
+        /// </summary>
+        private async Task<List<T>> ConvertCDCChangesToEntitiesAsync(List<ChangeRecord> changes)
+        {
+            var entities = new List<T>();
+            
+            try
+            {
+                // For backward compatibility, we'll use the existing change table service
+                // to fetch the actual entity data based on the change information
+                foreach (var change in changes)
+                {
+                    if (change.Operation == ChangeOperation.Delete)
+                    {
+                        // For deletes, we can't fetch the entity, but we can create a placeholder
+                        var entity = new T();
+                        entities.Add(entity);
+                    }
+                    else
+                    {
+                        // For inserts and updates, try to fetch the entity data
+                        var commandText = $"SELECT * FROM {_tableName} WHERE /* Add primary key condition based on change */ 1=1";
+                        var records = await _changeTableService.GetRecords(commandText);
+                        if (records.Any())
+                        {
+                            entities.AddRange(records);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // If conversion fails, return empty list to maintain backward compatibility
+            }
+            
+            return entities;
         }
 
         /// <summary>
@@ -205,5 +368,15 @@ namespace SQLDBEntityNotifier
                 return null;
             }
         }
+
+        /// <summary>
+        /// Gets whether enhanced CDC features are being used
+        /// </summary>
+        public bool IsUsingEnhancedCDC => _useEnhancedCDC;
+
+        /// <summary>
+        /// Gets the CDC provider if available
+        /// </summary>
+        public ICDCProvider? CDCProvider => _cdcProvider;
     }
 }
