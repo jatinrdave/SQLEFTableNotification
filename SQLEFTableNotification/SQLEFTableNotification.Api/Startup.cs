@@ -68,6 +68,10 @@ namespace SQLEFTableNotification.Api
 
         public void ConfigureServices(IServiceCollection services)
         {
+            // Read ChangeTracking:SourceSystem from configuration and register for DI
+            var sourceSystem = Configuration["ChangeTracking:SourceSystem"] ?? "DefaultSystem";
+            services.AddSingleton<string>(provider => sourceSystem);
+        {
 
             Log.Information("Startup::ConfigureServices");
 
@@ -175,20 +179,18 @@ namespace SQLEFTableNotification.Api
                 //data mapper services configuration
                 services.AddAutoMapper(typeof(MappingProfile));
 
-
             }
             catch (Exception ex)
             {
                 Log.Error(ex.Message);
             }
         }
+    }
 
-
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
-        {
-
+    // Configure method for application pipeline
+    void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+    {
             Log.Information("Startup::Configure");
-
             try
             {
                 if (env.EnvironmentName == "Development")
@@ -219,7 +221,6 @@ namespace SQLEFTableNotification.Api
             {
                 Log.Error(ex.Message);
             }
-
         }
     }
 }

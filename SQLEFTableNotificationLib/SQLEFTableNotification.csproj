@@ -1,15 +1,27 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
+  <TargetFramework>net5.0</TargetFramework>
+  <ImplicitUsings>false</ImplicitUsings>
+  <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Description>Monitor and receive notifications on record table change</Description>
     <Product>$(AssemblyName)</Product>
     <Copyright>$([System.DateTime]::Now.Year) Jatin Dave</Copyright>
-    <AssemblyVersion></AssemblyVersion>
-    <FileVersion>1.1.0.0</FileVersion>
+    <AssemblyVersion>1.2.0.0</AssemblyVersion>
+    <FileVersion>1.2.0.0</FileVersion>
+    <PackageVersion>1.2.0</PackageVersion>
+    <PackageId>SQLDBEntityNotifier</PackageId>
+    <Authors>Jatin Dave</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/yourusername/SQLDBEntityNotifier</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="5.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="5.0.0" />
+  </ItemGroup>
 
 </Project>

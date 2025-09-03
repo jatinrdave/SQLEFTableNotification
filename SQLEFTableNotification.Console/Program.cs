@@ -21,9 +21,13 @@ public class MainProgram
     public static void Main()
     {
         var configuration = new ConfigurationBuilder()
-            .SetBasePath(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "SQLEFTableNotification.Console"))
+            .SetBasePath(System.IO.Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
             .Build();
+
+        // Store configuration in AppDomain for access in other classes
+        AppDomain.CurrentDomain.SetData("Configuration", configuration);
 
         var connectionString = configuration.GetConnectionString("DefaultConnection");
 
