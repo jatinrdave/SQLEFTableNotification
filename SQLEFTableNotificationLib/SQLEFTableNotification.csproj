@@ -12,10 +12,10 @@
     <AssemblyVersion>1.2.0.0</AssemblyVersion>
     <FileVersion>1.2.0.0</FileVersion>
     <PackageVersion>1.2.0</PackageVersion>
-    <PackageId>SQLEFTableNotification</PackageId>
+    <PackageId>SQLDBEntityNotifier</PackageId>
     <Authors>Jatin Dave</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <RepositoryUrl>https://github.com/yourusername/SQLEFTableNotification</RepositoryUrl>
+    <RepositoryUrl>https://github.com/yourusername/SQLDBEntityNotifier</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
