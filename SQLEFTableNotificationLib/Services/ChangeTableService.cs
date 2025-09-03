@@ -23,7 +23,7 @@ namespace SQLEFTableNotification.Services
 
         public List<T> GetRecordsSync(string commandText)
         {
-            return GetRecords(commandText).GetAwaiter().GetResult();
+            return GetRecords(commandText).ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
         public async Task<long> GetRecordCount(string commandText)
@@ -34,7 +34,7 @@ namespace SQLEFTableNotification.Services
 
         public long GetRecordCountSync(string commandText)
         {
-            return GetRecordCount(commandText).GetAwaiter().GetResult();
+            return GetRecordCount(commandText).ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
         public async Task<List<T>> GetRecordsWithContext(string commandText, string context)

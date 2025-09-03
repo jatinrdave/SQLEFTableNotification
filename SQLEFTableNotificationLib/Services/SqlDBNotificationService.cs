@@ -20,11 +20,11 @@ namespace SQLEFTableNotification.Services
         /// </summary>
 
         #region members
-    private const string Sql_CurrentVersion = @"SELECT ISNULL(CHANGE_TRACKING_CURRENT_VERSION(), 0) as VersionCount";
-    // Now includes context filter
-    private const string Sql_TrackingOnChangeTable = @"SELECT ct.* FROM CHANGETABLE(CHANGES {0},{1}) ct WHERE ct.SYS_CHANGE_VERSION <= {2} AND (ct.SYS_CHANGE_CONTEXT IS NULL OR ct.SYS_CHANGE_CONTEXT <> @ChangeContext)";
-    private readonly string _changeContextName;
-        private long _currentVersion;
+
+        private const string Sql_CurrentVersion = @"SELECT ISNULL(CHANGE_TRACKING_CURRENT_VERSION(), 0) as VersionCount";
+        private const string Sql_TrackingOnChangeTable = @"SELECT ct.* FROM CHANGETABLE(CHANGES {0},{1}) ct WHERE  ct.SYS_CHANGE_VERSION <= {2}";
+        private readonly string _changeContextName;
+        private long _currentVersion = -1L;
         private ScheduledJobTimer _timer;
         private readonly TimeSpan _period;
         private readonly IChangeTableService<TChangeTableEntity> _changeTableService;
