@@ -180,6 +180,9 @@ namespace SQLDBEntityNotifier.Models
                 DependencyCycleDetected?.Invoke(this, new DependencyCycleDetectedEventArgs(tableName, cycles));
             }
 
+            // Raise the impact analysis completed event
+            ChangeImpactAnalyzed?.Invoke(this, new ChangeImpactAnalyzedEventArgs(tableName, impactAnalysis));
+
             return impactAnalysis;
         }
 
@@ -187,15 +190,20 @@ namespace SQLDBEntityNotifier.Models
         /// Clears correlation data for a specific table
         /// </summary>
         public void ClearTableCorrelations(string tableName)
-        {
-            _correlations.TryRemove(tableName, out _);
-            _dependencyGraphs.TryRemove(tableName, out _);
-            
             // Remove from foreign key relationships
-            foreach (var kvp in _foreignKeyRelationships)
+            foreach (var kvp in _foreignKeyRelationships.ToList())
             {
                 lock (kvp.Value)
                 {
+                    kvp.Value.RemoveAll(r => r.SourceTable == tableName || r.TargetTable == tableName);
+                }
+
+                // Remove the key if the list is now empty
+                if (kvp.Value.Count == 0)
+                {
+                    _foreignKeyRelationships.TryRemove(kvp.Key, out _);
+                }
+            }
                     kvp.Value.RemoveAll(r => r.SourceTable == tableName || r.TargetTable == tableName);
                 }
             }

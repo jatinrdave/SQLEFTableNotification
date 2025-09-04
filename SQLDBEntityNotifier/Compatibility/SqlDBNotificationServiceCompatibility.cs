@@ -16,16 +16,14 @@ namespace SQLDBEntityNotifier.Compatibility
         /// </summary>
         public static ICDCProvider CreateCompatibleCDCProvider(string connectionString, string databaseName = "")
         {
-            // Automatically detect if this is a SQL Server connection string
-            if (IsSqlServerConnectionString(connectionString))
-            {
-                var config = DatabaseConfiguration.CreateSqlServer(connectionString, databaseName);
-                return new SqlServerCDCProvider(config);
-            }
-            
-            // For non-SQL Server connections, throw an exception to maintain existing behavior
-            throw new NotSupportedException("This connection string is not supported by the existing SqlDBNotificationService. " +
-                "Use UnifiedDBNotificationService for multi-database support.");
+            if (string.IsNullOrWhiteSpace(connectionString))
+                throw new ArgumentException("connectionString cannot be null or whitespace.", nameof(connectionString));
+
+            if (!IsSqlServerConnectionString(connectionString))
+                throw new NotSupportedException("This connection string is not supported by the existing SqlDBNotificationService. Use UnifiedDBNotificationService for multi-database support.");
+
+            var config = DatabaseConfiguration.CreateSqlServer(connectionString, databaseName);
+            return new SqlServerCDCProvider(config);
         }
 
         /// <summary>
@@ -33,23 +31,20 @@ namespace SQLDBEntityNotifier.Compatibility
         /// </summary>
         public static bool IsSqlServerConnectionString(string connectionString)
         {
+        public static bool IsSqlServerConnectionString(string connectionString)
+        {
             if (string.IsNullOrWhiteSpace(connectionString))
                 return false;
-
-            var lowerConnectionString = connectionString.ToLowerInvariant();
-            
-            // SQL Server connection string patterns - more specific to avoid false positives
-            return lowerConnectionString.Contains("server=") ||
-                   lowerConnectionString.Contains("data source=") ||
-                   lowerConnectionString.Contains("initial catalog=") ||
-                   lowerConnectionString.Contains("integrated security=") ||
-                   lowerConnectionString.Contains("trusted_connection=") ||
-                   // Only include database=, user id=, password= if they're not part of PostgreSQL/MySQL patterns
-                   (lowerConnectionString.Contains("database=") && 
-                    !lowerConnectionString.Contains("host=") && 
-                    !lowerConnectionString.Contains("username=")) ||
-                   (lowerConnectionString.Contains("user id=") && 
-                    !lowerConnectionString.Contains("host=") && 
+            try
+            {
+                var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(connectionString);
+                return !string.IsNullOrWhiteSpace(builder.DataSource);
+            }
+            catch (ArgumentException)
+            {
+                return false;
+            }
+        }
                     !lowerConnectionString.Contains("username=")) ||
                    (lowerConnectionString.Contains("password=") && 
                     !lowerConnectionString.Contains("host=") && 
