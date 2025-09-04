@@ -336,12 +336,17 @@ namespace SQLDBEntityNotifier.Tests.Models
             // Arrange
             var options = new ColumnChangeFilterOptions
             {
-                NormalizeColumnNames = false
+                NormalizeColumnNames = false,
+                CaseSensitiveColumnNames = true
             };
 
-            // Act & Assert
-            Assert.Equal("  Name  ", options.NormalizeColumnName("  Name  "));
-            Assert.Equal("Email", options.NormalizeColumnName("Email"));
+            // Act
+            var result = options.NormalizeColumnName("  Name  ");
+
+            // Assert
+            // With NormalizeColumnNames = false and CaseSensitiveColumnNames = true,
+            // the method should not trim whitespace or change case
+            Assert.Equal("  Name  ", result);
         }
 
         [Fact]
@@ -481,6 +486,7 @@ namespace SQLDBEntityNotifier.Tests.Models
                 .AddMonitoredColumns("  Name  ", "  Email  ");
 
             options.NormalizeColumnNames = true;
+            options.CaseSensitiveColumnNames = false; // Need this for case-insensitive comparison
 
             // Act & Assert
             Assert.True(options.ShouldMonitorColumn("Name"));

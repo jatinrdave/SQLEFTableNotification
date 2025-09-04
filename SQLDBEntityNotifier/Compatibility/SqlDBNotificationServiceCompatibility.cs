@@ -38,15 +38,22 @@ namespace SQLDBEntityNotifier.Compatibility
 
             var lowerConnectionString = connectionString.ToLowerInvariant();
             
-            // SQL Server connection string patterns
+            // SQL Server connection string patterns - more specific to avoid false positives
             return lowerConnectionString.Contains("server=") ||
                    lowerConnectionString.Contains("data source=") ||
                    lowerConnectionString.Contains("initial catalog=") ||
-                   lowerConnectionString.Contains("database=") ||
                    lowerConnectionString.Contains("integrated security=") ||
-                   lowerConnectionString.Contains("user id=") ||
-                   lowerConnectionString.Contains("password=") ||
-                   lowerConnectionString.Contains("trusted_connection=");
+                   lowerConnectionString.Contains("trusted_connection=") ||
+                   // Only include database=, user id=, password= if they're not part of PostgreSQL/MySQL patterns
+                   (lowerConnectionString.Contains("database=") && 
+                    !lowerConnectionString.Contains("host=") && 
+                    !lowerConnectionString.Contains("username=")) ||
+                   (lowerConnectionString.Contains("user id=") && 
+                    !lowerConnectionString.Contains("host=") && 
+                    !lowerConnectionString.Contains("username=")) ||
+                   (lowerConnectionString.Contains("password=") && 
+                    !lowerConnectionString.Contains("host=") && 
+                    !lowerConnectionString.Contains("username="));
         }
 
         /// <summary>

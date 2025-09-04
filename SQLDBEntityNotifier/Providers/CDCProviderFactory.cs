@@ -36,6 +36,11 @@ namespace SQLDBEntityNotifier.Providers
         /// <returns>A SQL Server CDC provider</returns>
         public static ICDCProvider CreateSqlServerProvider(string connectionString, string databaseName = "")
         {
+            if (connectionString == null)
+                throw new ArgumentNullException(nameof(connectionString));
+            if (string.IsNullOrWhiteSpace(connectionString))
+                throw new ArgumentException("Connection string cannot be empty or whitespace", nameof(connectionString));
+
             var config = DatabaseConfiguration.CreateSqlServer(connectionString, databaseName);
             return new SqlServerCDCProvider(config);
         }
@@ -51,6 +56,23 @@ namespace SQLDBEntityNotifier.Providers
         /// <returns>A MySQL CDC provider</returns>
         public static ICDCProvider CreateMySqlProvider(string serverName, string databaseName, string username, string password, int port = 3306)
         {
+            if (serverName == null)
+                throw new ArgumentNullException(nameof(serverName));
+            if (databaseName == null)
+                throw new ArgumentNullException(nameof(databaseName));
+            if (username == null)
+                throw new ArgumentNullException(nameof(username));
+            if (password == null)
+                throw new ArgumentNullException(nameof(password));
+            if (string.IsNullOrWhiteSpace(serverName))
+                throw new ArgumentException("Server name cannot be empty or whitespace", nameof(serverName));
+            if (string.IsNullOrWhiteSpace(databaseName))
+                throw new ArgumentException("Database name cannot be empty or whitespace", nameof(databaseName));
+            if (string.IsNullOrWhiteSpace(username))
+                throw new ArgumentException("Username cannot be empty or whitespace", nameof(username));
+            if (string.IsNullOrWhiteSpace(password))
+                throw new ArgumentException("Password cannot be empty or whitespace", nameof(password));
+
             var config = DatabaseConfiguration.CreateMySql(serverName, databaseName, username, password, port);
             return new MySqlCDCProvider(config);
         }
@@ -67,6 +89,23 @@ namespace SQLDBEntityNotifier.Providers
         /// <returns>A PostgreSQL CDC provider</returns>
         public static ICDCProvider CreatePostgreSqlProvider(string serverName, string databaseName, string username, string password, int port = 5432, string schemaName = "public")
         {
+            if (serverName == null)
+                throw new ArgumentNullException(nameof(serverName));
+            if (databaseName == null)
+                throw new ArgumentNullException(nameof(databaseName));
+            if (username == null)
+                throw new ArgumentNullException(nameof(username));
+            if (password == null)
+                throw new ArgumentNullException(nameof(password));
+            if (string.IsNullOrWhiteSpace(serverName))
+                throw new ArgumentException("Server name cannot be empty or whitespace", nameof(serverName));
+            if (string.IsNullOrWhiteSpace(databaseName))
+                throw new ArgumentException("Database name cannot be empty or whitespace", nameof(databaseName));
+            if (string.IsNullOrWhiteSpace(username))
+                throw new ArgumentException("Username cannot be empty or whitespace", nameof(username));
+            if (string.IsNullOrWhiteSpace(password))
+                throw new ArgumentException("Password cannot be empty or whitespace", nameof(password));
+
             var config = DatabaseConfiguration.CreatePostgreSql(serverName, databaseName, username, password, port, schemaName);
             return new PostgreSqlCDCProvider(config);
         }
@@ -82,13 +121,8 @@ namespace SQLDBEntityNotifier.Providers
                 throw new ArgumentException("Connection string cannot be null or empty", nameof(connectionString));
 
             // Try to detect database type from connection string
-            if (connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase) || 
-                connectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase))
-            {
-                // SQL Server connection string
-                return CreateSqlServerProvider(connectionString);
-            }
-            else if (connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase))
+            // Check for PostgreSQL first (most specific)
+            if (connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase))
             {
                 // PostgreSQL connection string
                 var config = new DatabaseConfiguration
@@ -98,8 +132,9 @@ namespace SQLDBEntityNotifier.Providers
                 };
                 return new PostgreSqlCDCProvider(config);
             }
-            else if (connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase) && 
-                     connectionString.Contains("Database=", StringComparison.OrdinalIgnoreCase))
+            // Check for MySQL (look for Uid/Pwd which are MySQL-specific)
+            else if (connectionString.Contains("Uid=", StringComparison.OrdinalIgnoreCase) || 
+                     connectionString.Contains("Pwd=", StringComparison.OrdinalIgnoreCase))
             {
                 // MySQL connection string
                 var config = new DatabaseConfiguration
@@ -108,6 +143,13 @@ namespace SQLDBEntityNotifier.Providers
                     ConnectionString = connectionString
                 };
                 return new MySqlCDCProvider(config);
+            }
+            // Check for SQL Server (Server= or Data Source=)
+            else if (connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase) || 
+                     connectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase))
+            {
+                // SQL Server connection string
+                return CreateSqlServerProvider(connectionString);
             }
             else
             {

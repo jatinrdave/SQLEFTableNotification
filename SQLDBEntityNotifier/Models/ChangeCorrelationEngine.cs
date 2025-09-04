@@ -1,0 +1,677 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.Concurrent;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using SQLDBEntityNotifier.Interfaces;
+
+namespace SQLDBEntityNotifier.Models
+{
+    /// <summary>
+    /// Change correlation engine for detecting relationships and dependencies between changes across multiple tables
+    /// </summary>
+    public class ChangeCorrelationEngine : IDisposable
+    {
+        private readonly ConcurrentDictionary<string, TableDependencyGraph> _dependencyGraphs = new();
+        private readonly ConcurrentDictionary<string, ChangeCorrelation> _correlations = new();
+        private readonly ConcurrentDictionary<string, List<ForeignKeyRelationship>> _foreignKeyRelationships = new();
+        private readonly Timer _correlationAnalysisTimer;
+        private readonly Timer _cleanupTimer;
+        private readonly object _lockObject = new object();
+        private bool _disposed = false;
+
+        /// <summary>
+        /// Event raised when correlations are detected between changes
+        /// </summary>
+        public event EventHandler<ChangeCorrelationDetectedEventArgs>? ChangeCorrelationDetected;
+
+        /// <summary>
+        /// Event raised when dependency cycles are detected
+        /// </summary>
+        public event EventHandler<DependencyCycleDetectedEventArgs>? DependencyCycleDetected;
+
+        /// <summary>
+        /// Event raised when impact analysis is completed
+        /// </summary>
+        public event EventHandler<ChangeImpactAnalyzedEventArgs>? ChangeImpactAnalyzed;
+
+        public ChangeCorrelationEngine()
+        {
+            _correlationAnalysisTimer = new Timer(AnalyzeCorrelations, null, TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(2));
+            _cleanupTimer = new Timer(CleanupOldData, null, TimeSpan.FromHours(2), TimeSpan.FromHours(2));
+        }
+
+        /// <summary>
+        /// Registers a foreign key relationship between tables
+        /// </summary>
+        public void RegisterForeignKeyRelationship(string sourceTable, string targetTable, string sourceColumn, string targetColumn, string constraintName)
+        {
+            var relationship = new ForeignKeyRelationship
+            {
+                SourceTable = sourceTable,
+                TargetTable = targetTable,
+                SourceColumn = sourceColumn,
+                TargetColumn = targetColumn,
+                ConstraintName = constraintName,
+                RegisteredAt = DateTime.UtcNow
+            };
+
+            var relationships = _foreignKeyRelationships.GetOrAdd(sourceTable, _ => new List<ForeignKeyRelationship>());
+            lock (relationships)
+            {
+                relationships.Add(relationship);
+            }
+
+            // Update dependency graphs
+            UpdateDependencyGraph(sourceTable, targetTable, relationship);
+        }
+
+        /// <summary>
+        /// Records a change for correlation analysis
+        /// </summary>
+        public void RecordChange(string tableName, ChangeRecord changeRecord, DateTime timestamp)
+        {
+            if (_disposed) return;
+            if (string.IsNullOrEmpty(tableName)) return;
+            if (changeRecord == null) return;
+
+            var correlation = _correlations.GetOrAdd(tableName, _ => new ChangeCorrelation());
+            correlation.RecordChange(changeRecord, timestamp);
+
+            // Trigger immediate correlation analysis for high-priority changes
+            if (IsHighPriorityChange(changeRecord))
+            {
+                _ = Task.Run(() => AnalyzeTableCorrelationsAsync(tableName));
+            }
+        }
+
+        /// <summary>
+        /// Records a batch of changes for correlation analysis
+        /// </summary>
+        public void RecordBatchChanges(string tableName, IEnumerable<ChangeRecord> changeRecords, DateTime timestamp)
+        {
+            if (_disposed) return;
+            if (string.IsNullOrEmpty(tableName)) return;
+            if (changeRecords == null) return;
+
+            var correlation = _correlations.GetOrAdd(tableName, _ => new ChangeCorrelation());
+            correlation.RecordBatchChanges(changeRecords, timestamp);
+
+            // Trigger immediate correlation analysis for batch changes
+            _ = Task.Run(() => AnalyzeTableCorrelationsAsync(tableName));
+        }
+
+        /// <summary>
+        /// Gets correlated changes for a specific table
+        /// </summary>
+        public List<CorrelatedChange> GetCorrelatedChanges(string tableName, TimeSpan timeWindow)
+        {
+            var correlation = _correlations.GetValueOrDefault(tableName);
+            if (correlation == null) return new List<CorrelatedChange>();
+
+            var cutoffTime = DateTime.UtcNow.Subtract(timeWindow);
+            return correlation.GetCorrelatedChanges(cutoffTime);
+        }
+
+        /// <summary>
+        /// Gets all correlated changes across all tables
+        /// </summary>
+        public Dictionary<string, List<CorrelatedChange>> GetAllCorrelatedChanges(TimeSpan timeWindow)
+        {
+            var result = new Dictionary<string, List<CorrelatedChange>>();
+            var cutoffTime = DateTime.UtcNow.Subtract(timeWindow);
+
+            foreach (var kvp in _correlations)
+            {
+                result[kvp.Key] = kvp.Value.GetCorrelatedChanges(cutoffTime);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Gets dependency graph for a specific table
+        /// </summary>
+        public TableDependencyGraph GetDependencyGraph(string tableName)
+        {
+            if (string.IsNullOrEmpty(tableName)) return new TableDependencyGraph("unknown");
+            return _dependencyGraphs.TryGetValue(tableName, out var graph) ? graph : new TableDependencyGraph(tableName);
+        }
+
+        /// <summary>
+        /// Gets all dependency graphs
+        /// </summary>
+        public Dictionary<string, TableDependencyGraph> GetAllDependencyGraphs()
+        {
+            return _dependencyGraphs.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        }
+
+        /// <summary>
+        /// Analyzes the impact of a change on dependent tables
+        /// </summary>
+        public async Task<ChangeImpactAnalysis> AnalyzeChangeImpactAsync(string tableName, ChangeRecord changeRecord)
+        {
+            var dependencyGraph = GetDependencyGraph(tableName);
+            var impactAnalysis = new ChangeImpactAnalysis
+            {
+                SourceTable = tableName,
+                ChangeRecord = changeRecord,
+                Timestamp = DateTime.UtcNow,
+                AffectedTables = new List<string>(),
+                ImpactLevel = ChangeImpactLevel.Low,
+                DependencyChain = new List<string>()
+            };
+
+            // Find all dependent tables
+            var dependentTables = dependencyGraph.GetDependentTables();
+            impactAnalysis.AffectedTables.AddRange(dependentTables);
+
+            // Analyze impact level based on change type and dependencies
+            impactAnalysis.ImpactLevel = DetermineImpactLevel(changeRecord, dependentTables.Count);
+
+            // Build dependency chain
+            impactAnalysis.DependencyChain = dependencyGraph.GetDependencyChain();
+
+            // Check for circular dependencies
+            var cycles = dependencyGraph.DetectCircularDependencies();
+            if (cycles.Any())
+            {
+                DependencyCycleDetected?.Invoke(this, new DependencyCycleDetectedEventArgs(tableName, cycles));
+            }
+
+            return impactAnalysis;
+        }
+
+        /// <summary>
+        /// Clears correlation data for a specific table
+        /// </summary>
+        public void ClearTableCorrelations(string tableName)
+        {
+            _correlations.TryRemove(tableName, out _);
+            _dependencyGraphs.TryRemove(tableName, out _);
+            
+            // Remove from foreign key relationships
+            foreach (var kvp in _foreignKeyRelationships)
+            {
+                lock (kvp.Value)
+                {
+                    kvp.Value.RemoveAll(r => r.SourceTable == tableName || r.TargetTable == tableName);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Clears all correlation data
+        /// </summary>
+        public void ClearAllCorrelations()
+        {
+            _correlations.Clear();
+            _dependencyGraphs.Clear();
+            _foreignKeyRelationships.Clear();
+        }
+
+        private void UpdateDependencyGraph(string sourceTable, string targetTable, ForeignKeyRelationship relationship)
+        {
+            // Update source table dependency graph
+            var sourceGraph = _dependencyGraphs.GetOrAdd(sourceTable, _ => new TableDependencyGraph(sourceTable));
+            sourceGraph.AddDependency(targetTable, relationship);
+
+            // Update target table dependency graph (reverse dependency)
+            var targetGraph = _dependencyGraphs.GetOrAdd(targetTable, _ => new TableDependencyGraph(targetTable));
+            targetGraph.AddReverseDependency(sourceTable, relationship);
+        }
+
+        private bool IsHighPriorityChange(ChangeRecord changeRecord)
+        {
+            // Consider deletes and updates as high priority for immediate correlation analysis
+            return changeRecord.ChangeType == ChangeType.Delete || changeRecord.ChangeType == ChangeType.Update;
+        }
+
+        private async Task AnalyzeTableCorrelationsAsync(string tableName)
+        {
+            try
+            {
+                var correlation = _correlations.GetValueOrDefault(tableName);
+                if (correlation == null) return;
+
+                var recentChanges = correlation.GetRecentChanges(TimeSpan.FromMinutes(5));
+                if (!recentChanges.Any()) return;
+
+                var dependencyGraph = GetDependencyGraph(tableName);
+                var dependentTables = dependencyGraph.GetDependentTables();
+
+                foreach (var change in recentChanges)
+                {
+                    // Check for correlations with dependent tables
+                    foreach (var dependentTable in dependentTables)
+                    {
+                        var dependentCorrelation = _correlations.GetValueOrDefault(dependentTable);
+                        if (dependentCorrelation != null)
+                        {
+                            var dependentChanges = dependentCorrelation.GetRecentChanges(TimeSpan.FromMinutes(5));
+                            
+                            foreach (var dependentChange in dependentChanges)
+                            {
+                                if (AreChangesCorrelated(change, dependentChange, dependencyGraph))
+                                {
+                                    var correlatedChange = new CorrelatedChange
+                                    {
+                                        PrimaryChange = change,
+                                        RelatedChange = dependentChange,
+                                        CorrelationType = DetermineCorrelationType(change, dependentChange),
+                                        Confidence = CalculateCorrelationConfidence(change, dependentChange),
+                                        DetectedAt = DateTime.UtcNow
+                                    };
+
+                                    correlation.AddCorrelatedChange(correlatedChange);
+                                    
+                                    // Raise correlation detected event
+                                    ChangeCorrelationDetected?.Invoke(this, new ChangeCorrelationDetectedEventArgs(tableName, correlatedChange));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error analyzing table correlations for {tableName}: {ex.Message}");
+            }
+        }
+
+        private bool AreChangesCorrelated(ChangeRecord change1, ChangeRecord change2, TableDependencyGraph dependencyGraph)
+        {
+            // Check if changes are within a reasonable time window
+            var timeDifference = Math.Abs((change1.Timestamp - change2.Timestamp).TotalSeconds);
+            if (timeDifference > 300) // 5 minutes
+                return false;
+
+            // Check if changes are related through foreign key relationships
+            var relationships = dependencyGraph.GetRelationships();
+            foreach (var relationship in relationships)
+            {
+                if (IsChangeRelatedToRelationship(change1, relationship) && IsChangeRelatedToRelationship(change2, relationship))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool IsChangeRelatedToRelationship(ChangeRecord change, ForeignKeyRelationship relationship)
+        {
+            // Check if the change affects columns involved in the foreign key relationship
+            // This is a simplified check - in a real implementation, you'd analyze the actual column values
+            return true; // Placeholder implementation
+        }
+
+        private CorrelationType DetermineCorrelationType(ChangeRecord change1, ChangeRecord change2)
+        {
+            // Determine the type of correlation based on change types and timing
+            if (change1.ChangeType == ChangeType.Delete && change2.ChangeType == ChangeType.Delete)
+                return CorrelationType.CascadingDelete;
+            
+            if (change1.ChangeType == ChangeType.Update && change2.ChangeType == ChangeType.Update)
+                return CorrelationType.CascadingUpdate;
+            
+            if (change1.ChangeType == ChangeType.Insert && change2.ChangeType == ChangeType.Insert)
+                return CorrelationType.BulkInsert;
+            
+            return CorrelationType.General;
+        }
+
+        private double CalculateCorrelationConfidence(ChangeRecord change1, ChangeRecord change2)
+        {
+            // Calculate confidence based on timing proximity and change type similarity
+            var timeDifference = Math.Abs((change1.Timestamp - change2.Timestamp).TotalSeconds);
+            var timeConfidence = Math.Max(0, 1 - (timeDifference / 300)); // 300 seconds = 5 minutes
+            
+            var typeConfidence = change1.ChangeType == change2.ChangeType ? 1.0 : 0.5;
+            
+            return (timeConfidence + typeConfidence) / 2;
+        }
+
+        private ChangeImpactLevel DetermineImpactLevel(ChangeRecord changeRecord, int dependentTableCount)
+        {
+            if (changeRecord.ChangeType == ChangeType.Delete && dependentTableCount > 5)
+                return ChangeImpactLevel.Critical;
+            
+            if (changeRecord.ChangeType == ChangeType.Update && dependentTableCount > 3)
+                return ChangeImpactLevel.High;
+            
+            if (dependentTableCount > 1)
+                return ChangeImpactLevel.Medium;
+            
+            return ChangeImpactLevel.Low;
+        }
+
+        private void AnalyzeCorrelations(object? state)
+        {
+            if (_disposed) return;
+
+            try
+            {
+                foreach (var tableName in _correlations.Keys)
+                {
+                    _ = Task.Run(() => AnalyzeTableCorrelationsAsync(tableName));
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in correlation analysis: {ex.Message}");
+            }
+        }
+
+        private void CleanupOldData(object? state)
+        {
+            if (_disposed) return;
+
+            try
+            {
+                var cutoffTime = DateTime.UtcNow.AddHours(-24); // Keep last 24 hours
+
+                foreach (var correlation in _correlations.Values)
+                {
+                    correlation.CleanupOldData(cutoffTime);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in correlation cleanup: {ex.Message}");
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed && disposing)
+            {
+                _correlationAnalysisTimer?.Dispose();
+                _cleanupTimer?.Dispose();
+                _disposed = true;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Manages change correlations for a specific table
+    /// </summary>
+    public class ChangeCorrelation
+    {
+        private readonly List<ChangeRecord> _recentChanges = new();
+        private readonly List<CorrelatedChange> _correlatedChanges = new();
+        private readonly object _lockObject = new object();
+
+        public void RecordChange(ChangeRecord changeRecord, DateTime timestamp)
+        {
+            var change = new ChangeRecord
+            {
+                ChangeId = changeRecord.ChangeId,
+                TableName = changeRecord.TableName,
+                Operation = changeRecord.Operation,
+                ChangeTimestamp = timestamp,
+                Data = changeRecord.Data
+            };
+
+            lock (_lockObject)
+            {
+                _recentChanges.Add(change);
+                
+                // Keep only last 1000 changes for memory management
+                while (_recentChanges.Count > 1000)
+                {
+                    _recentChanges.RemoveAt(0);
+                }
+            }
+        }
+
+        public void RecordBatchChanges(IEnumerable<ChangeRecord> changeRecords, DateTime timestamp)
+        {
+            var records = changeRecords.ToList();
+            
+            lock (_lockObject)
+            {
+                foreach (var record in records)
+                {
+                    var change = new ChangeRecord
+                    {
+                        ChangeId = record.ChangeId,
+                        TableName = record.TableName,
+                        Operation = record.Operation,
+                        ChangeTimestamp = timestamp,
+                        Data = record.Data
+                    };
+                    
+                    _recentChanges.Add(change);
+                }
+                
+                while (_recentChanges.Count > 1000)
+                {
+                    _recentChanges.RemoveAt(0);
+                }
+            }
+        }
+
+        public List<ChangeRecord> GetRecentChanges(TimeSpan timeWindow)
+        {
+            var cutoffTime = DateTime.UtcNow.Subtract(timeWindow);
+            
+            lock (_lockObject)
+            {
+                return _recentChanges.Where(c => c.Timestamp >= cutoffTime).ToList();
+            }
+        }
+
+        public List<CorrelatedChange> GetCorrelatedChanges(DateTime cutoffTime)
+        {
+            lock (_lockObject)
+            {
+                return _correlatedChanges.Where(c => c.DetectedAt >= cutoffTime).ToList();
+            }
+        }
+
+        public void AddCorrelatedChange(CorrelatedChange correlatedChange)
+        {
+            lock (_lockObject)
+            {
+                _correlatedChanges.Add(correlatedChange);
+                
+                // Keep only last 500 correlations for memory management
+                while (_correlatedChanges.Count > 500)
+                {
+                    _correlatedChanges.RemoveAt(0);
+                }
+            }
+        }
+
+        public void CleanupOldData(DateTime cutoffTime)
+        {
+            lock (_lockObject)
+            {
+                _recentChanges.RemoveAll(c => c.Timestamp < cutoffTime);
+                _correlatedChanges.RemoveAll(c => c.DetectedAt < cutoffTime);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Represents a dependency graph for a table
+    /// </summary>
+    public class TableDependencyGraph
+    {
+        private readonly string _tableName;
+        private readonly List<ForeignKeyRelationship> _dependencies = new();
+        private readonly List<ForeignKeyRelationship> _reverseDependencies = new();
+        private readonly object _lockObject = new object();
+
+        public string TableName => _tableName;
+        public IReadOnlyList<ForeignKeyRelationship> Dependencies => _dependencies.AsReadOnly();
+        public IReadOnlyList<ForeignKeyRelationship> ReverseDependencies => _reverseDependencies.AsReadOnly();
+
+        public TableDependencyGraph(string tableName)
+        {
+            _tableName = tableName;
+        }
+
+        public void AddDependency(string dependentTable, ForeignKeyRelationship relationship)
+        {
+            lock (_lockObject)
+            {
+                if (!_dependencies.Any(d => d.TargetTable == dependentTable))
+                {
+                    _dependencies.Add(relationship);
+                }
+            }
+        }
+
+        public void AddReverseDependency(string sourceTable, ForeignKeyRelationship relationship)
+        {
+            lock (_lockObject)
+            {
+                if (!_reverseDependencies.Any(d => d.SourceTable == sourceTable))
+                {
+                    _reverseDependencies.Add(relationship);
+                }
+            }
+        }
+
+        public List<string> GetDependentTables()
+        {
+            lock (_lockObject)
+            {
+                return _dependencies.Select(d => d.TargetTable).ToList();
+            }
+        }
+
+        public List<string> GetDependencyChain()
+        {
+            lock (_lockObject)
+            {
+                var chain = new List<string> { _tableName };
+                chain.AddRange(_dependencies.Select(d => d.TargetTable));
+                return chain;
+            }
+        }
+
+        public List<ForeignKeyRelationship> GetRelationships()
+        {
+            lock (_lockObject)
+            {
+                var allRelationships = new List<ForeignKeyRelationship>();
+                allRelationships.AddRange(_dependencies);
+                allRelationships.AddRange(_reverseDependencies);
+                return allRelationships;
+            }
+        }
+
+        public List<List<string>> DetectCircularDependencies()
+        {
+            // Simple circular dependency detection
+            // In a real implementation, this would use graph algorithms like DFS
+            var cycles = new List<List<string>>();
+            
+            // Placeholder implementation
+            return cycles;
+        }
+    }
+
+    #region Supporting Classes and Enums
+
+    public class ForeignKeyRelationship
+    {
+        public string SourceTable { get; set; } = string.Empty;
+        public string TargetTable { get; set; } = string.Empty;
+        public string SourceColumn { get; set; } = string.Empty;
+        public string TargetColumn { get; set; } = string.Empty;
+        public string ConstraintName { get; set; } = string.Empty;
+        public DateTime RegisteredAt { get; set; }
+    }
+
+    public class CorrelatedChange
+    {
+        public ChangeRecord PrimaryChange { get; set; } = new();
+        public ChangeRecord RelatedChange { get; set; } = new();
+        public CorrelationType CorrelationType { get; set; }
+        public double Confidence { get; set; }
+        public DateTime DetectedAt { get; set; }
+    }
+
+    public class ChangeImpactAnalysis
+    {
+        public string SourceTable { get; set; } = string.Empty;
+        public ChangeRecord ChangeRecord { get; set; } = new();
+        public DateTime Timestamp { get; set; }
+        public List<string> AffectedTables { get; set; } = new List<string>();
+        public ChangeImpactLevel ImpactLevel { get; set; }
+        public List<string> DependencyChain { get; set; } = new List<string>();
+    }
+
+    public enum CorrelationType
+    {
+        General,
+        CascadingDelete,
+        CascadingUpdate,
+        BulkInsert,
+        ReferentialIntegrity
+    }
+
+    public enum ChangeImpactLevel
+    {
+        Low,
+        Medium,
+        High,
+        Critical
+    }
+
+    #endregion
+}
+
+#region Event Arguments
+
+namespace SQLDBEntityNotifier.Models
+{
+    public class ChangeCorrelationDetectedEventArgs : EventArgs
+    {
+        public string TableName { get; }
+        public CorrelatedChange CorrelatedChange { get; }
+
+        public ChangeCorrelationDetectedEventArgs(string tableName, CorrelatedChange correlatedChange)
+        {
+            TableName = tableName;
+            CorrelatedChange = correlatedChange;
+        }
+    }
+
+    public class DependencyCycleDetectedEventArgs : EventArgs
+    {
+        public string TableName { get; }
+        public List<List<string>> Cycles { get; }
+
+        public DependencyCycleDetectedEventArgs(string tableName, List<List<string>> cycles)
+        {
+            TableName = tableName;
+            Cycles = cycles;
+        }
+    }
+
+    public class ChangeImpactAnalyzedEventArgs : EventArgs
+    {
+        public string TableName { get; }
+        public ChangeImpactAnalysis ImpactAnalysis { get; }
+
+        public ChangeImpactAnalyzedEventArgs(string tableName, ChangeImpactAnalysis impactAnalysis)
+        {
+            TableName = tableName;
+            ImpactAnalysis = impactAnalysis;
+        }
+    }
+}
+
+#endregion

@@ -4,9 +4,9 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>SQLDBEntityNotifier</PackageId>
-    <PackageVersion>1.4.0</PackageVersion>
-    <AssemblyVersion>1.4.0.0</AssemblyVersion>
-    <FileVersion>1.4.0.0</FileVersion>
+    <PackageVersion>2.0.0</PackageVersion>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
     <Authors>Jatin Dave</Authors>
     <Description>SQLDBEntityNotifier is a .NET library for database change tracking notifications across SQL Server, MySQL, and PostgreSQL. It provides event-driven notifications for insert, update, delete, and error scenarios, supporting Change Data Capture (CDC) features with minimal configuration. Easy to use, well-documented, and fully unit tested.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

@@ -581,6 +581,135 @@ namespace SQLDBEntityNotifier.Providers
             };
         }
 
+        public async Task<List<ColumnDefinition>> GetTableColumnsAsync(string tableName)
+        {
+            if (_connection?.State != ConnectionState.Open)
+                return new List<ColumnDefinition>();
+
+            try
+            {
+                var sql = @"
+                    SELECT 
+                        column_name,
+                        data_type,
+                        character_maximum_length,
+                        numeric_precision,
+                        numeric_scale,
+                        is_nullable,
+                        ordinal_position
+                    FROM information_schema.columns
+                    WHERE table_schema = @schema AND table_name = @table
+                    ORDER BY ordinal_position";
+
+                using var command = new NpgsqlCommand(sql, _connection);
+                command.Parameters.AddWithValue("@schema", _configuration.SchemaName ?? "public");
+                command.Parameters.AddWithValue("@table", tableName);
+
+                var columns = new List<ColumnDefinition>();
+                using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    columns.Add(new ColumnDefinition
+                    {
+                        ColumnName = reader.GetString("column_name"),
+                        DataType = reader.GetString("data_type"),
+                        MaxLength = reader.IsDBNull("character_maximum_length") ? null : reader.GetInt32("character_maximum_length"),
+                        Precision = reader.IsDBNull("numeric_precision") ? null : reader.GetInt32("numeric_precision"),
+                        Scale = reader.IsDBNull("numeric_scale") ? null : reader.GetInt32("numeric_scale"),
+                        IsNullable = reader.GetString("is_nullable").Equals("YES", StringComparison.OrdinalIgnoreCase)
+                    });
+                }
+                return columns;
+            }
+            catch
+            {
+                return new List<ColumnDefinition>();
+            }
+        }
+
+        public async Task<List<IndexDefinition>> GetTableIndexesAsync(string tableName)
+        {
+            if (_connection?.State != ConnectionState.Open)
+                return new List<IndexDefinition>();
+
+            try
+            {
+                var sql = @"
+                    SELECT 
+                        i.indexname,
+                        i.indexdef,
+                        i.indisunique,
+                        i.indisprimary
+                    FROM pg_indexes i
+                    WHERE i.schemaname = @schema AND i.tablename = @table
+                    ORDER BY i.indexname";
+
+                using var command = new NpgsqlCommand(sql, _connection);
+                command.Parameters.AddWithValue("@schema", _configuration.SchemaName ?? "public");
+                command.Parameters.AddWithValue("@table", tableName);
+
+                var indexes = new List<IndexDefinition>();
+                using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    indexes.Add(new IndexDefinition
+                    {
+                        Name = reader.GetString("indexname"),
+                        Type = "BTREE", // PostgreSQL default index type
+                        IsUnique = reader.GetBoolean("indisunique"),
+                        IsPrimaryKey = reader.GetBoolean("indisprimary"),
+                        IsUniqueConstraint = false
+                    });
+                }
+                return indexes;
+            }
+            catch
+            {
+                return new List<IndexDefinition>();
+            }
+        }
+
+        public async Task<List<ConstraintDefinition>> GetTableConstraintsAsync(string tableName)
+        {
+            if (_connection?.State != ConnectionState.Open)
+                return new List<ConstraintDefinition>();
+
+            try
+            {
+                var sql = @"
+                    SELECT 
+                        c.conname,
+                        c.contype,
+                        pg_get_constraintdef(c.oid) as definition
+                    FROM pg_constraint c
+                    INNER JOIN pg_namespace n ON c.connamespace = n.oid
+                    INNER JOIN pg_class t ON c.conrelid = t.oid
+                    WHERE n.nspname = @schema AND t.relname = @table
+                    ORDER BY c.conname";
+
+                using var command = new NpgsqlCommand(sql, _connection);
+                command.Parameters.AddWithValue("@schema", _configuration.SchemaName ?? "public");
+                command.Parameters.AddWithValue("@table", tableName);
+
+                var constraints = new List<ConstraintDefinition>();
+                using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    constraints.Add(new ConstraintDefinition
+                    {
+                        Name = reader.GetString("conname"),
+                        Type = ConstraintType.Other, // Default type since we can't easily map string to enum
+                        Expression = reader.IsDBNull("definition") ? null : reader.GetString("definition")
+                    });
+                }
+                return constraints;
+            }
+            catch
+            {
+                return new List<ConstraintDefinition>();
+            }
+        }
+
         public void Dispose()
         {
             Dispose(true);

@@ -194,8 +194,7 @@ namespace SQLDBEntityNotifier.Providers
                 {
                     var change = new ChangeRecord
                     {
-                        ChangeId = reader.GetString("ChangeId"),
-                        TableName = tableName,
+                        ChangeId = Convert.ToBase64String((byte[])reader["ChangeId"]),
                         Operation = ParseOperation(reader.GetInt32("Operation")),
                         ChangeTimestamp = DateTime.UtcNow, // CDC doesn't provide timestamp, use current time
                         ChangePosition = reader.GetString("ChangeId"),
@@ -206,7 +205,9 @@ namespace SQLDBEntityNotifier.Providers
                             ["CommandId"] = reader.GetInt32("CommandId")
                         }
                     };
-                    
+                    var updateMask = reader.IsDBNull("UpdateMask")
+                        ? null
+                        : (byte[])reader["UpdateMask"];
                     changes.Add(change);
                 }
             }
@@ -562,13 +563,17 @@ namespace SQLDBEntityNotifier.Providers
                 if (string.IsNullOrEmpty(captureInstance))
                     return null;
 
+                // Validate capture instance name to prevent SQL injection
+                if (!System.Text.RegularExpressions.Regex.IsMatch(captureInstance, @"^[a-zA-Z0-9_]+$"))
+                    throw new InvalidOperationException($"Invalid capture instance name: {captureInstance}");
+
                 var sql = $@"
                     SELECT 
                         ct.__$update_mask as UpdateMask,
                         ct.__$seqval as SequenceValue
                     FROM cdc.fn_cdc_get_all_changes_{captureInstance}(@changeId, @changeId, 'all') ct
                     WHERE ct.__$start_lsn = @changeId";
-                
+
                 using var command = new SqlCommand(sql, _connection);
                 command.Parameters.AddWithValue("@changeId", changeId);
                 
@@ -658,6 +663,150 @@ namespace SQLDBEntityNotifier.Providers
                 4 => ChangeOperation.Update,
                 _ => ChangeOperation.Unknown
             };
+        }
+
+        public async Task<List<ColumnDefinition>> GetTableColumnsAsync(string tableName)
+        {
+            if (_connection?.State != ConnectionState.Open)
+                return new List<ColumnDefinition>();
+
+            try
+            {
+                var sql = @"
+                    SELECT 
+                        c.name,
+                        t.name as data_type,
+                        c.max_length,
+                        c.precision,
+                        c.scale,
+                        c.is_nullable,
+                        c.column_id
+                    FROM sys.columns c
+                    INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
+                    INNER JOIN sys.tables tab ON c.object_id = tab.object_id
+                    INNER JOIN sys.schemas s ON tab.schema_id = s.schema_id
+                    WHERE s.name = @schema AND tab.name = @table
+                    ORDER BY c.column_id";
+
+                using var command = new SqlCommand(sql, _connection);
+                command.Parameters.AddWithValue("@schema", _configuration.SchemaName ?? "dbo");
+                command.Parameters.AddWithValue("@table", tableName);
+
+                var columns = new List<ColumnDefinition>();
+                using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    columns.Add(new ColumnDefinition
+                    {
+                        ColumnName = reader.GetString("name"),
+                        DataType = reader.GetString("data_type"),
+                        MaxLength = reader.IsDBNull("max_length") ? null : reader.GetInt32("max_length"),
+                        Precision = reader.IsDBNull("precision") ? null : reader.GetInt32("precision"),
+                        Scale = reader.IsDBNull("scale") ? null : reader.GetInt32("scale"),
+                        IsNullable = reader.GetBoolean("is_nullable")
+                    });
+                }
+                return columns;
+            }
+            catch
+            {
+                return new List<ColumnDefinition>();
+            }
+        }
+
+        public async Task<List<IndexDefinition>> GetTableIndexesAsync(string tableName)
+        {
+            if (_connection?.State != ConnectionState.Open)
+                return new List<IndexDefinition>();
+
+            try
+            {
+                var sql = @"
+                    SELECT 
+                        i.name,
+                        i.type_desc,
+                        i.is_unique,
+                        i.is_primary_key,
+                        i.is_unique_constraint
+                    FROM sys.indexes i
+                    INNER JOIN sys.tables t ON i.object_id = t.object_id
+                    INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
+                    WHERE s.name = @schema AND t.name = @table
+                    ORDER BY i.name";
+
+                using var command = new SqlCommand(sql, _connection);
+                command.Parameters.AddWithValue("@schema", _configuration.SchemaName ?? "dbo");
+                command.Parameters.AddWithValue("@table", tableName);
+
+                var indexes = new List<IndexDefinition>();
+                using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    indexes.Add(new IndexDefinition
+                    {
+                        Name = reader.GetString("name"),
+                        Type = reader.GetString("type_desc"),
+                        IsUnique = reader.GetBoolean("is_unique"),
+                        IsPrimaryKey = reader.GetBoolean("is_primary_key"),
+                        IsUniqueConstraint = reader.GetBoolean("is_unique_constraint")
+                    });
+                }
+                return indexes;
+            }
+            catch
+            {
+                return new List<IndexDefinition>();
+            }
+        }
+
+        public async Task<List<ConstraintDefinition>> GetTableConstraintsAsync(string tableName)
+        {
+            if (_connection?.State != ConnectionState.Open)
+                return new List<ConstraintDefinition>();
+
+            try
+            {
+                var sql = @"
+                    SELECT 
+                        c.name,
+                        c.type_desc,
+                        c.definition
+                    FROM sys.check_constraints c
+                    INNER JOIN sys.tables t ON c.parent_object_id = t.object_id
+                    INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
+                    WHERE s.name = @schema AND t.name = @table
+                    UNION ALL
+                    SELECT 
+                        fk.name,
+                        'FOREIGN_KEY' as type_desc,
+                        'FOREIGN KEY CONSTRAINT' as definition
+                    FROM sys.foreign_keys fk
+                    INNER JOIN sys.tables t ON fk.parent_object_id = t.object_id
+                    INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
+                    WHERE s.name = @schema AND t.name = @table
+                    ORDER BY name";
+
+                using var command = new SqlCommand(sql, _connection);
+                command.Parameters.AddWithValue("@schema", _configuration.SchemaName ?? "dbo");
+                command.Parameters.AddWithValue("@table", tableName);
+
+                var constraints = new List<ConstraintDefinition>();
+                using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    constraints.Add(new ConstraintDefinition
+                    {
+                        Name = reader.GetString("name"),
+                        Type = ConstraintType.Other, // Default type since we can't easily map string to enum
+                        Expression = reader.IsDBNull("definition") ? null : reader.GetString("definition")
+                    });
+                }
+                return constraints;
+            }
+            catch
+            {
+                return new List<ConstraintDefinition>();
+            }
         }
 
         public void Dispose()

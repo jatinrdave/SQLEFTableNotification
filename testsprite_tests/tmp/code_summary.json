@@ -1,0 +1,791 @@
+{
+  "tech_stack": [
+    "C#",
+    ".NET 6.0",
+    "Entity Framework Core 6.0",
+    "SQL Server",
+    "MySQL",
+    "PostgreSQL",
+    "xUnit",
+    "MSTest",
+    "Moq",
+    "Dependency Injection",
+    "Event-Driven Architecture",
+    "Change Data Capture (CDC)"
+  ],
+  "features": [
+    {
+      "name": "Multi-Database CDC Support",
+      "description": "Unified Change Data Capture support across SQL Server, MySQL, and PostgreSQL databases with native CDC capabilities",
+      "files": [
+        "SQLDBEntityNotifier/Providers/SqlServerCDCProvider.cs",
+        "SQLDBEntityNotifier/Providers/MySqlCDCProvider.cs",
+        "SQLDBEntityNotifier/Providers/PostgreSqlCDCProvider.cs",
+        "SQLDBEntityNotifier/Interfaces/ICDCProvider.cs",
+        "SQLDBEntityNotifier/CDCProviderFactory.cs"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "info": {
+          "title": "Multi-Database CDC Support",
+          "version": "2.0.0",
+          "description": "Unified API for Change Data Capture across multiple database platforms"
+        },
+        "paths": {
+          "/cdc/providers": {
+            "get": {
+              "summary": "Get available CDC providers",
+              "responses": {
+                "200": {
+                  "description": "List of CDC providers",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/CDCProvider"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "components": {
+          "schemas": {
+            "CDCProvider": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "enum": ["SqlServer", "MySQL", "PostgreSQL"]
+                },
+                "isEnabled": {
+                  "type": "boolean"
+                },
+                "connectionString": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Column-Level Change Filtering",
+      "description": "Advanced filtering system to monitor specific columns and exclude others from change notifications",
+      "files": [
+        "SQLDBEntityNotifier/Models/ColumnChangeFilterOptions.cs",
+        "SQLDBEntityNotifier/Models/AdvancedChangeFilters.cs",
+        "SQLDBEntityNotifier/UnifiedDBNotificationService.cs"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "info": {
+          "title": "Column-Level Change Filtering",
+          "version": "2.0.0",
+          "description": "Advanced filtering capabilities for database change notifications"
+        },
+        "paths": {
+          "/filters/column": {
+            "post": {
+              "summary": "Configure column filters",
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ColumnFilterConfig"
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "Filter configuration applied"
+                }
+              }
+            }
+          }
+        },
+        "components": {
+          "schemas": {
+            "ColumnFilterConfig": {
+              "type": "object",
+              "properties": {
+                "monitorColumns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "excludeColumns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "filterLogic": {
+                  "type": "string",
+                  "enum": ["AND", "OR"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Change Analytics Engine",
+      "description": "Comprehensive analytics and metrics collection for CDC operations including performance monitoring and pattern detection",
+      "files": [
+        "SQLDBEntityNotifier/Models/ChangeAnalytics.cs",
+        "SQLDBEntityNotifier/Models/ChangeMetrics.cs",
+        "SQLDBEntityNotifier/Models/PerformanceMetrics.cs"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "info": {
+          "title": "Change Analytics Engine",
+          "version": "2.0.0",
+          "description": "Analytics and metrics for CDC operations"
+        },
+        "paths": {
+          "/analytics/metrics": {
+            "get": {
+              "summary": "Get change analytics metrics",
+              "parameters": [
+                {
+                  "name": "tableName",
+                  "in": "query",
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              ],
+              "responses": {
+                "200": {
+                  "description": "Analytics metrics",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/ChangeAnalytics"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "components": {
+          "schemas": {
+            "ChangeAnalytics": {
+              "type": "object",
+              "properties": {
+                "totalChanges": {
+                  "type": "integer"
+                },
+                "averageProcessingTime": {
+                  "type": "number"
+                },
+                "errorRate": {
+                  "type": "number"
+                },
+                "throughput": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Schema Change Detection",
+      "description": "Real-time monitoring and detection of database schema changes including column, index, and constraint modifications",
+      "files": [
+        "SQLDBEntityNotifier/Models/SchemaChangeDetection.cs",
+        "SQLDBEntityNotifier/Models/SchemaChangeInfo.cs",
+        "SQLDBEntityNotifier/Models/SchemaChangeSupportingModels.cs"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "info": {
+          "title": "Schema Change Detection",
+          "version": "2.0.0",
+          "description": "Real-time schema change monitoring"
+        },
+        "paths": {
+          "/schema/changes": {
+            "get": {
+              "summary": "Get schema changes",
+              "parameters": [
+                {
+                  "name": "tableName",
+                  "in": "query",
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              ],
+              "responses": {
+                "200": {
+                  "description": "Schema changes detected",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/SchemaChange"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "components": {
+          "schemas": {
+            "SchemaChange": {
+              "type": "object",
+              "properties": {
+                "changeType": {
+                  "type": "string",
+                  "enum": ["ColumnAdded", "ColumnDropped", "IndexCreated", "IndexDropped"]
+                },
+                "tableName": {
+                  "type": "string"
+                },
+                "changeTimestamp": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "affectedColumns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Change Correlation Engine",
+      "description": "Multi-table change correlation and dependency analysis for complex database relationships",
+      "files": [
+        "SQLDBEntityNotifier/Models/ChangeCorrelationEngine.cs",
+        "SQLDBEntityNotifier/Models/ChangeCorrelationEngine.cs"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "info": {
+          "title": "Change Correlation Engine",
+          "version": "2.0.0",
+          "description": "Multi-table change correlation analysis"
+        },
+        "paths": {
+          "/correlation/analyze": {
+            "post": {
+              "summary": "Analyze change correlations",
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/CorrelationRequest"
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "Correlation analysis results",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/CorrelationResult"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "components": {
+          "schemas": {
+            "CorrelationRequest": {
+              "type": "object",
+              "properties": {
+                "tableName": {
+                  "type": "string"
+                },
+                "timeRange": {
+                  "type": "object",
+                  "properties": {
+                    "start": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "end": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            },
+            "CorrelationResult": {
+              "type": "object",
+              "properties": {
+                "correlatedChanges": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CorrelatedChange"
+                  }
+                },
+                "dependencyGraph": {
+                  "$ref": "#/components/schemas/DependencyGraph"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Change Context Management",
+      "description": "Context propagation and management across asynchronous operations with metadata enrichment",
+      "files": [
+        "SQLDBEntityNotifier/Models/ChangeContextManager.cs",
+        "SQLDBEntityNotifier/Models/EnhancedChangeContext.cs"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "info": {
+          "title": "Change Context Management",
+          "version": "2.0.0",
+          "description": "Context management for CDC operations"
+        },
+        "paths": {
+          "/context/create": {
+            "post": {
+              "summary": "Create change context",
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ContextRequest"
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "Context created",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/ChangeContext"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "components": {
+          "schemas": {
+            "ContextRequest": {
+              "type": "object",
+              "properties": {
+                "tableName": {
+                  "type": "string"
+                },
+                "operation": {
+                  "type": "string",
+                  "enum": ["Insert", "Update", "Delete"]
+                },
+                "metadata": {
+                  "type": "object"
+                }
+              }
+            },
+            "ChangeContext": {
+              "type": "object",
+              "properties": {
+                "contextId": {
+                  "type": "string"
+                },
+                "tableName": {
+                  "type": "string"
+                },
+                "operation": {
+                  "type": "string"
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "metadata": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Advanced Change Filters",
+      "description": "Complex filtering system with AND/OR logic, time-based filtering, and content-based rules",
+      "files": [
+        "SQLDBEntityNotifier/Models/AdvancedChangeFilters.cs",
+        "SQLDBEntityNotifier/Models/FilterRules.cs"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "info": {
+          "title": "Advanced Change Filters",
+          "version": "2.0.0",
+          "description": "Advanced filtering capabilities for change notifications"
+        },
+        "paths": {
+          "/filters/advanced": {
+            "post": {
+              "summary": "Apply advanced filters",
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/AdvancedFilterConfig"
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "Filtered changes",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/ChangeRecord"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "components": {
+          "schemas": {
+            "AdvancedFilterConfig": {
+              "type": "object",
+              "properties": {
+                "filterRules": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FilterRule"
+                  }
+                },
+                "maxAge": {
+                  "type": "string",
+                  "description": "ISO 8601 duration"
+                },
+                "maxResults": {
+                  "type": "integer"
+                }
+              }
+            },
+            "FilterRule": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "operator": {
+                  "type": "string",
+                  "enum": ["Equals", "Contains", "GreaterThan", "LessThan"]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Change Routing Engine",
+      "description": "Intelligent routing of changes to multiple destinations with configurable rules and delivery statistics",
+      "files": [
+        "SQLDBEntityNotifier/Models/ChangeRoutingEngine.cs",
+        "SQLDBEntityNotifier/Models/RoutingRules.cs",
+        "SQLDBEntityNotifier/Models/IDestination.cs"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "info": {
+          "title": "Change Routing Engine",
+          "version": "2.0.0",
+          "description": "Intelligent change routing to multiple destinations"
+        },
+        "paths": {
+          "/routing/route": {
+            "post": {
+              "summary": "Route changes to destinations",
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/RoutingRequest"
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "Routing results",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/RoutingResult"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "components": {
+          "schemas": {
+            "RoutingRequest": {
+              "type": "object",
+              "properties": {
+                "changes": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChangeRecord"
+                  }
+                },
+                "tableName": {
+                  "type": "string"
+                },
+                "routingRules": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RoutingRule"
+                  }
+                }
+              }
+            },
+            "RoutingResult": {
+              "type": "object",
+              "properties": {
+                "successfulDeliveries": {
+                  "type": "integer"
+                },
+                "failedDeliveries": {
+                  "type": "integer"
+                },
+                "deliveryTime": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Change Replay Engine",
+      "description": "Change replay and recovery capabilities with audit trails and session management",
+      "files": [
+        "SQLDBEntityNotifier/Models/ChangeReplayEngine.cs",
+        "SQLDBEntityNotifier/Models/ReplayOptions.cs",
+        "SQLDBEntityNotifier/Models/RecoveryOptions.cs"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "info": {
+          "title": "Change Replay Engine",
+          "version": "2.0.0",
+          "description": "Change replay and recovery capabilities"
+        },
+        "paths": {
+          "/replay/start": {
+            "post": {
+              "summary": "Start change replay",
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ReplayRequest"
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "Replay session started",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/ReplaySession"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "components": {
+          "schemas": {
+            "ReplayRequest": {
+              "type": "object",
+              "properties": {
+                "tableName": {
+                  "type": "string"
+                },
+                "startTime": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "endTime": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "options": {
+                  "$ref": "#/components/schemas/ReplayOptions"
+                }
+              }
+            },
+            "ReplaySession": {
+              "type": "object",
+              "properties": {
+                "sessionId": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["Running", "Completed", "Failed"]
+                },
+                "progress": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Unified Notification Service",
+      "description": "Main service class that orchestrates all CDC operations with event-driven notifications",
+      "files": [
+        "SQLDBEntityNotifier/UnifiedDBNotificationService.cs",
+        "SQLDBEntityNotifier/RecordChangedEventArgs.cs",
+        "SQLDBEntityNotifier/ErrorEventArgs.cs"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "info": {
+          "title": "Unified Notification Service",
+          "version": "2.0.0",
+          "description": "Main service for CDC operations and notifications"
+        },
+        "paths": {
+          "/notifications/start": {
+            "post": {
+              "summary": "Start monitoring notifications",
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/MonitoringRequest"
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "Monitoring started"
+                }
+              }
+            }
+          },
+          "/notifications/events": {
+            "get": {
+              "summary": "Get notification events",
+              "responses": {
+                "200": {
+                  "description": "Notification events",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/NotificationEvent"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "components": {
+          "schemas": {
+            "MonitoringRequest": {
+              "type": "object",
+              "properties": {
+                "tableName": {
+                  "type": "string"
+                },
+                "connectionString": {
+                  "type": "string"
+                },
+                "filterOptions": {
+                  "$ref": "#/components/schemas/ColumnChangeFilterOptions"
+                }
+              }
+            },
+            "NotificationEvent": {
+              "type": "object",
+              "properties": {
+                "eventType": {
+                  "type": "string",
+                  "enum": ["Changed", "Error", "HealthCheck"]
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "data": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+

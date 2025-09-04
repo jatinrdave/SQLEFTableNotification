@@ -199,7 +199,9 @@ namespace SQLDBEntityNotifier.Models
                 return true;
 
             // Check if column is explicitly monitored
-            return MonitoredColumns.Contains(normalizedColumnName, GetColumnNameComparer());
+            // Need to normalize both the input and the stored column names for comparison
+            return MonitoredColumns.Any(storedColumn => 
+                GetColumnNameComparer().Equals(NormalizeColumnName(storedColumn), normalizedColumnName));
         }
 
         /// <summary>

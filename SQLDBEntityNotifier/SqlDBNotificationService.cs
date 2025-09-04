@@ -253,11 +253,12 @@ namespace SQLDBEntityNotifier
 
                 string commandText = _changeTrackingQueryFunc(_currentVersion, lastVersion);
                 var records = await _changeTableService.GetRecords(commandText);
-                if (records != null && records.Any())
-                {
-                    var eventArgs = CreateEnhancedEventArgs(records, lastVersion);
-                    OnChanged?.Invoke(this, eventArgs);
-                }
+                
+                // Always raise the event when a version change is detected, even if no records are returned
+                // This handles cases like delete operations where records no longer exist
+                var eventArgs = CreateEnhancedEventArgs(records ?? new List<T>(), lastVersion);
+                OnChanged?.Invoke(this, eventArgs);
+                
                 _currentVersion = lastVersion;
             }
             catch (Exception ex)

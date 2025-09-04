@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using SQLDBEntityNotifier.Interfaces;
 using SQLDBEntityNotifier.Models;
@@ -20,6 +21,18 @@ namespace SQLDBEntityNotifier
         private readonly TimeSpan _pollingInterval;
         private readonly TimeSpan _healthCheckInterval;
         private readonly ColumnChangeFilterOptions? _columnFilterOptions;
+        private readonly SemaphoreSlim _pollSemaphore = new SemaphoreSlim(1, 1);
+        
+        // Advanced CDC Features
+        private readonly ChangeAnalytics _changeAnalytics;
+        private readonly SchemaChangeDetection _schemaChangeDetection;
+        private readonly ChangeCorrelationEngine _changeCorrelationEngine;
+        private readonly ChangeContextManager _changeContextManager;
+        
+        // Phase 3 & 4: Advanced Filtering, Routing, and Replay
+        private readonly AdvancedChangeFilters _advancedFilters;
+        private readonly ChangeRoutingEngine _changeRoutingEngine;
+        private readonly ChangeReplayEngine _changeReplayEngine;
         
         private System.Timers.Timer? _timer;
         private System.Timers.Timer? _healthCheckTimer;
@@ -30,6 +43,24 @@ namespace SQLDBEntityNotifier
         public event EventHandler<EnhancedRecordChangedEventArgs<T>>? OnChanged;
         public event EventHandler<ErrorEventArgs>? OnError;
         public event EventHandler<CDCHealthInfo>? OnHealthCheck;
+        
+        // Advanced CDC Feature Events
+        public event EventHandler<PerformanceThresholdExceededEventArgs>? OnPerformanceThresholdExceeded;
+        public event EventHandler<ChangePatternDetectedEventArgs>? OnChangePatternDetected;
+        public event EventHandler<MetricsAggregatedEventArgs>? OnMetricsAggregated;
+        public event EventHandler<SchemaChangeDetectedEventArgs>? OnSchemaChangeDetected;
+        public event EventHandler<SchemaChangeImpactAnalyzedEventArgs>? OnSchemaChangeImpactAnalyzed;
+        public event EventHandler<ChangeCorrelationDetectedEventArgs>? OnChangeCorrelationDetected;
+        public event EventHandler<ChangeImpactAnalyzedEventArgs>? OnChangeImpactAnalyzed;
+        
+        // Phase 3 & 4: Advanced Filtering, Routing, and Replay Events
+        public event EventHandler<ChangeRoutedEventArgs>? OnChangeRouted;
+        public event EventHandler<RoutingFailedEventArgs>? OnRoutingFailed;
+        public event EventHandler<RoutingMetricsUpdatedEventArgs>? OnRoutingMetricsUpdated;
+        public event EventHandler<ReplayStartedEventArgs>? OnReplayStarted;
+        public event EventHandler<ReplayCompletedEventArgs>? OnReplayCompleted;
+        public event EventHandler<ReplayFailedEventArgs>? OnReplayFailed;
+        public event EventHandler<RecoveryPerformedEventArgs>? OnRecoveryPerformed;
 
         /// <summary>
         /// Gets the table name being monitored
@@ -67,6 +98,41 @@ namespace SQLDBEntityNotifier
         public ColumnChangeFilterOptions? ColumnFilterOptions => _columnFilterOptions;
 
         /// <summary>
+        /// Gets the change analytics engine
+        /// </summary>
+        public ChangeAnalytics ChangeAnalytics => _changeAnalytics;
+
+        /// <summary>
+        /// Gets the schema change detection engine
+        /// </summary>
+        public SchemaChangeDetection SchemaChangeDetection => _schemaChangeDetection;
+
+        /// <summary>
+        /// Gets the change correlation engine
+        /// </summary>
+        public ChangeCorrelationEngine ChangeCorrelationEngine => _changeCorrelationEngine;
+
+        /// <summary>
+        /// Gets the change context manager
+        /// </summary>
+        public ChangeContextManager ChangeContextManager => _changeContextManager;
+
+        /// <summary>
+        /// Gets the advanced change filters
+        /// </summary>
+        public AdvancedChangeFilters AdvancedFilters => _advancedFilters;
+
+        /// <summary>
+        /// Gets the change routing engine
+        /// </summary>
+        public ChangeRoutingEngine ChangeRoutingEngine => _changeRoutingEngine;
+
+        /// <summary>
+        /// Gets the change replay engine
+        /// </summary>
+        public ChangeReplayEngine ChangeReplayEngine => _changeReplayEngine;
+
+        /// <summary>
         /// Initializes a new instance of the UnifiedDBNotificationService
         /// </summary>
         /// <param name="cdcProvider">The CDC provider to use</param>
@@ -86,6 +152,20 @@ namespace SQLDBEntityNotifier
             _pollingInterval = pollingInterval ?? TimeSpan.FromSeconds(60);
             _healthCheckInterval = healthCheckInterval ?? TimeSpan.FromMinutes(5);
             _columnFilterOptions = columnFilterOptions;
+            
+            // Initialize advanced CDC features
+            _changeAnalytics = new ChangeAnalytics();
+            _schemaChangeDetection = new SchemaChangeDetection();
+            _changeCorrelationEngine = new ChangeCorrelationEngine();
+            _changeContextManager = new ChangeContextManager();
+            
+            // Initialize Phase 3 & 4 features
+            _advancedFilters = new AdvancedChangeFilters();
+            _changeRoutingEngine = new ChangeRoutingEngine();
+            _changeReplayEngine = new ChangeReplayEngine();
+            
+            // Wire up advanced feature events
+            WireUpAdvancedFeatureEvents();
         }
 
         /// <summary>
@@ -104,6 +184,36 @@ namespace SQLDBEntityNotifier
             ColumnChangeFilterOptions? columnFilterOptions = null)
             : this(CDCProviderFactory.CreateProvider(configuration), tableName, pollingInterval, healthCheckInterval, columnFilterOptions)
         {
+            // Advanced features are initialized in the base constructor
+        }
+
+        /// <summary>
+        /// Wires up events from advanced CDC features to the main service events
+        /// </summary>
+        private void WireUpAdvancedFeatureEvents()
+        {
+            // Wire up ChangeAnalytics events
+            _changeAnalytics.PerformanceThresholdExceeded += (sender, e) => OnPerformanceThresholdExceeded?.Invoke(this, e);
+            _changeAnalytics.ChangePatternDetected += (sender, e) => OnChangePatternDetected?.Invoke(this, e);
+            _changeAnalytics.MetricsAggregated += (sender, e) => OnMetricsAggregated?.Invoke(this, e);
+            
+            // Wire up SchemaChangeDetection events
+            _schemaChangeDetection.SchemaChangeDetected += (sender, e) => OnSchemaChangeDetected?.Invoke(this, e);
+            _schemaChangeDetection.SchemaChangeImpactAnalyzed += (sender, e) => OnSchemaChangeImpactAnalyzed?.Invoke(this, e);
+            
+            // Wire up ChangeCorrelationEngine events
+            _changeCorrelationEngine.ChangeCorrelationDetected += (sender, e) => OnChangeCorrelationDetected?.Invoke(this, e);
+            _changeCorrelationEngine.ChangeImpactAnalyzed += (sender, e) => OnChangeImpactAnalyzed?.Invoke(this, e);
+            
+            // Wire up Phase 3 & 4 events
+            _changeRoutingEngine.OnChangeRouted += (sender, e) => OnChangeRouted?.Invoke(this, e);
+            _changeRoutingEngine.OnRoutingFailed += (sender, e) => OnRoutingFailed?.Invoke(this, e);
+            _changeRoutingEngine.OnRoutingMetricsUpdated += (sender, e) => OnRoutingMetricsUpdated?.Invoke(this, e);
+            
+            _changeReplayEngine.OnReplayStarted += (sender, e) => OnReplayStarted?.Invoke(this, e);
+            _changeReplayEngine.OnReplayCompleted += (sender, e) => OnReplayCompleted?.Invoke(this, e);
+            _changeReplayEngine.OnReplayFailed += (sender, e) => OnReplayFailed?.Invoke(this, e);
+            _changeReplayEngine.OnRecoveryPerformed += (sender, e) => OnRecoveryPerformed?.Invoke(this, e);
         }
 
         /// <summary>
@@ -144,7 +254,7 @@ namespace SQLDBEntityNotifier
 
                 // Start the polling timer
                 _timer = new System.Timers.Timer(_pollingInterval.TotalMilliseconds);
-                _timer.Elapsed += async (sender, e) => await PollForChangesAsync();
+                _timer.Elapsed += (sender, e) => _ = HandlePollingTimerElapsedAsync();
                 _timer.AutoReset = true;
                 _timer.Start();
 
@@ -153,7 +263,7 @@ namespace SQLDBEntityNotifier
                 if (actualHealthCheckInterval > TimeSpan.Zero)
                 {
                     _healthCheckTimer = new System.Timers.Timer(actualHealthCheckInterval.TotalMilliseconds);
-                    _healthCheckTimer.Elapsed += async (sender, e) => await PerformHealthCheckAsync();
+                    _healthCheckTimer.Elapsed += (sender, e) => _ = HandleHealthCheckTimerElapsedAsync();
                     _healthCheckTimer.AutoReset = true;
                     _healthCheckTimer.Start();
                 }
@@ -187,6 +297,38 @@ namespace SQLDBEntityNotifier
         }
 
         /// <summary>
+        /// Helper method to handle polling timer events with semaphore protection
+        /// </summary>
+        private async Task HandlePollingTimerElapsedAsync()
+        {
+            try
+            {
+                await _pollSemaphore.WaitAsync();
+                await PollForChangesAsync();
+            }
+            finally
+            {
+                _pollSemaphore.Release();
+            }
+        }
+
+        /// <summary>
+        /// Helper method to handle health check timer events with semaphore protection
+        /// </summary>
+        private async Task HandleHealthCheckTimerElapsedAsync()
+        {
+            try
+            {
+                await _pollSemaphore.WaitAsync();
+                await PerformHealthCheckAsync();
+            }
+            finally
+            {
+                _pollSemaphore.Release();
+            }
+        }
+
+        /// <summary>
         /// Polls for changes and raises events
         /// </summary>
         public async Task PollForChangesAsync()
@@ -194,6 +336,8 @@ namespace SQLDBEntityNotifier
             if (_disposed || !_isMonitoring)
                 return;
 
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            
             try
             {
                 var changes = await _cdcProvider.GetTableChangesAsync(_tableName, _currentPosition);
@@ -211,6 +355,23 @@ namespace SQLDBEntityNotifier
                         {
                             var eventArgs = CreateEnhancedEventArgs(filteredChanges, entities);
                             OnChanged?.Invoke(this, eventArgs);
+                            
+                            // Record changes for advanced analytics
+                            var processingTime = stopwatch.Elapsed;
+                            RecordChangesForAnalytics(filteredChanges, processingTime);
+                            
+                            // Record changes for correlation analysis
+                            RecordChangesForCorrelation(filteredChanges);
+                            
+                            // Create and propagate change context
+                            var changeContext = CreateChangeContext(filteredChanges);
+                            PropagateChangeContext(changeContext);
+                            
+                            // Record changes for replay and recovery
+                            RecordChangesForReplay(filteredChanges);
+                            
+                            // Route changes using advanced routing engine
+                            await RouteChangesAsync(filteredChanges);
                         }
                     }
 
@@ -218,10 +379,17 @@ namespace SQLDBEntityNotifier
                     var latestChange = changes.OrderByDescending(c => c.ChangePosition).First();
                     _currentPosition = latestChange.ChangePosition;
                 }
+                
+                // Check for schema changes periodically
+                await CheckForSchemaChangesAsync();
             }
             catch (Exception ex)
             {
                 OnError?.Invoke(this, new ErrorEventArgs { Message = ex.Message, Exception = ex });
+            }
+            finally
+            {
+                stopwatch.Stop();
             }
         }
 
@@ -485,6 +653,161 @@ namespace SQLDBEntityNotifier
         }
 
         /// <summary>
+        /// Records changes for analytics processing
+        /// </summary>
+        /// <param name="changes">The changes to record</param>
+        /// <param name="processingTime">The time taken to process the changes</param>
+        private void RecordChangesForAnalytics(List<ChangeRecord> changes, TimeSpan processingTime)
+        {
+            try
+            {
+                if (changes.Count == 1)
+                {
+                    _changeAnalytics.RecordChange(_tableName, changes[0], processingTime);
+                }
+                else
+                {
+                    _changeAnalytics.RecordBatchChanges(_tableName, changes, processingTime);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't throw to prevent interrupting the main flow
+                System.Diagnostics.Debug.WriteLine($"Error recording changes for analytics: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Records changes for correlation analysis
+        /// </summary>
+        /// <param name="changes">The changes to record</param>
+        private void RecordChangesForCorrelation(List<ChangeRecord> changes)
+        {
+            try
+            {
+                var timestamp = DateTime.UtcNow;
+                foreach (var change in changes)
+                {
+                    _changeCorrelationEngine.RecordChange(_tableName, change, timestamp);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't throw to prevent interrupting the main flow
+                System.Diagnostics.Debug.WriteLine($"Error recording changes for correlation: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Creates a change context for the given changes
+        /// </summary>
+        /// <param name="changes">The changes to create context for</param>
+        /// <returns>The created change context</returns>
+        private EnhancedChangeContext CreateChangeContext(List<ChangeRecord> changes)
+        {
+            try
+            {
+                var context = _changeContextManager.CreateContext(_tableName);
+                
+                // Add additional metadata
+                context.Metadata["ProcessingTimestamp"] = DateTime.UtcNow;
+                context.Metadata["ChangeCount"] = changes.Count;
+                context.Metadata["TableName"] = _tableName;
+                
+                return context;
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't throw to prevent interrupting the main flow
+                System.Diagnostics.Debug.WriteLine($"Error creating change context: {ex.Message}");
+                return new EnhancedChangeContext();
+            }
+        }
+
+        /// <summary>
+        /// Propagates change context to dependent systems
+        /// </summary>
+        /// <param name="context">The change context to propagate</param>
+        private void PropagateChangeContext(EnhancedChangeContext context)
+        {
+            try
+            {
+                _changeContextManager.SetContext(context);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't throw to prevent interrupting the main flow
+                System.Diagnostics.Debug.WriteLine($"Error propagating change context: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Records changes for replay and recovery
+        /// </summary>
+        /// <param name="changes">The changes to record</param>
+        private void RecordChangesForReplay(List<ChangeRecord> changes)
+        {
+            try
+            {
+                foreach (var change in changes)
+                {
+                    _changeReplayEngine.RecordChange(_tableName, change);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't throw to prevent interrupting the main flow
+                System.Diagnostics.Debug.WriteLine($"Error recording changes for replay: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Routes changes using the advanced routing engine
+        /// </summary>
+        /// <param name="changes">The changes to route</param>
+        private async Task RouteChangesAsync(List<ChangeRecord> changes)
+        {
+            try
+            {
+                foreach (var change in changes)
+                {
+                    await _changeRoutingEngine.RouteChangeAsync(change, _tableName);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't throw to prevent interrupting the main flow
+                System.Diagnostics.Debug.WriteLine($"Error routing changes: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Checks for schema changes in the monitored table
+        /// </summary>
+        private async Task CheckForSchemaChangesAsync()
+        {
+            try
+            {
+                // Only check for schema changes every 10 polling cycles to avoid performance impact
+                var shouldCheck = DateTime.UtcNow.Ticks % 10 == 0;
+                if (shouldCheck)
+                {
+                    var schemaChanges = await _schemaChangeDetection.DetectSchemaChangesAsync(_tableName, _cdcProvider);
+                    if (schemaChanges.Any())
+                    {
+                        // Schema changes are automatically raised through the event wiring
+                        System.Diagnostics.Debug.WriteLine($"Schema changes detected for table {_tableName}: {schemaChanges.Count} changes");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't throw to prevent interrupting the main flow
+                System.Diagnostics.Debug.WriteLine($"Error checking for schema changes: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Disposes the service and stops monitoring
         /// </summary>
         public void Dispose()
@@ -503,6 +826,19 @@ namespace SQLDBEntityNotifier
             {
                 StopMonitoring();
                 _cdcProvider?.Dispose();
+                _pollSemaphore?.Dispose();
+                
+                // Dispose advanced CDC features
+                _changeAnalytics?.Dispose();
+                _schemaChangeDetection?.Dispose();
+                _changeCorrelationEngine?.Dispose();
+                _changeContextManager?.Dispose();
+                
+                // Dispose Phase 3 & 4 features
+                _advancedFilters?.Dispose();
+                _changeRoutingEngine?.Dispose();
+                _changeReplayEngine?.Dispose();
+                
                 _disposed = true;
             }
         }

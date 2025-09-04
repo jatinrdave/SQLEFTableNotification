@@ -64,6 +64,21 @@ namespace SQLDBEntityNotifier.Interfaces
         /// Gets the schema information for the specified table
         /// </summary>
         Task<TableSchema> GetTableSchemaAsync(string tableName);
+
+        /// <summary>
+        /// Gets the columns for the specified table
+        /// </summary>
+        Task<List<ColumnDefinition>> GetTableColumnsAsync(string tableName);
+
+        /// <summary>
+        /// Gets the indexes for the specified table
+        /// </summary>
+        Task<List<IndexDefinition>> GetTableIndexesAsync(string tableName);
+
+        /// <summary>
+        /// Gets the constraints for the specified table
+        /// </summary>
+        Task<List<ConstraintDefinition>> GetTableConstraintsAsync(string tableName);
         
         /// <summary>
         /// Validates the CDC configuration and connectivity
@@ -105,6 +120,21 @@ namespace SQLDBEntityNotifier.Interfaces
         /// Gets or sets the type of change operation
         /// </summary>
         public ChangeOperation Operation { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the change type (alias for Operation for compatibility)
+        /// </summary>
+        public ChangeType ChangeType => (ChangeType)Operation;
+        
+        /// <summary>
+        /// Gets or sets the change timestamp (alias for ChangeTimestamp for compatibility)
+        /// </summary>
+        public DateTime Timestamp => ChangeTimestamp;
+        
+        /// <summary>
+        /// Gets or sets the change data
+        /// </summary>
+        public Dictionary<string, object> Data { get; set; } = new();
         
         /// <summary>
         /// Gets or sets the primary key values as a dictionary
@@ -238,6 +268,22 @@ namespace SQLDBEntityNotifier.Interfaces
         /// Gets or sets the scale for numeric types
         /// </summary>
         public int? Scale { get; set; }
+
+        /// <summary>
+        /// Creates a shallow copy of this column definition
+        /// </summary>
+        public ColumnDefinition Clone()
+        {
+            return new ColumnDefinition
+            {
+                ColumnName = this.ColumnName,
+                DataType = this.DataType,
+                IsNullable = this.IsNullable,
+                MaxLength = this.MaxLength,
+                Precision = this.Precision,
+                Scale = this.Scale
+            };
+        }
     }
     
     /// <summary>
@@ -331,5 +377,36 @@ namespace SQLDBEntityNotifier.Interfaces
         /// CDC status is unknown
         /// </summary>
         Unknown = 4
+    }
+    
+    /// <summary>
+    /// Represents the type of database change
+    /// </summary>
+    public enum ChangeType
+    {
+        /// <summary>
+        /// Record was inserted
+        /// </summary>
+        Insert = 1,
+        
+        /// <summary>
+        /// Record was updated
+        /// </summary>
+        Update = 2,
+        
+        /// <summary>
+        /// Record was deleted
+        /// </summary>
+        Delete = 3,
+        
+        /// <summary>
+        /// Batch operation
+        /// </summary>
+        Batch = 4,
+        
+        /// <summary>
+        /// Schema change
+        /// </summary>
+        SchemaChange = 5
     }
 }

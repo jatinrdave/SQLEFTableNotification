@@ -481,6 +481,134 @@ namespace SQLDBEntityNotifier.Providers
             };
         }
 
+        public async Task<List<ColumnDefinition>> GetTableColumnsAsync(string tableName)
+        {
+            if (_connection?.State != ConnectionState.Open)
+                return new List<ColumnDefinition>();
+
+            try
+            {
+                var sql = @"
+                    SELECT 
+                        COLUMN_NAME,
+                        DATA_TYPE,
+                        CHARACTER_MAXIMUM_LENGTH,
+                        NUMERIC_PRECISION,
+                        NUMERIC_SCALE,
+                        IS_NULLABLE,
+                        ORDINAL_POSITION
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = @database AND TABLE_NAME = @table
+                    ORDER BY ORDINAL_POSITION";
+
+                using var command = new MySqlCommand(sql, _connection);
+                command.Parameters.AddWithValue("@database", _configuration.DatabaseName);
+                command.Parameters.AddWithValue("@table", tableName);
+
+                var columns = new List<ColumnDefinition>();
+                using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    columns.Add(new ColumnDefinition
+                    {
+                        ColumnName = reader.GetString("COLUMN_NAME"),
+                        DataType = reader.GetString("DATA_TYPE"),
+                        MaxLength = reader.IsDBNull("CHARACTER_MAXIMUM_LENGTH") ? null : reader.GetInt32("CHARACTER_MAXIMUM_LENGTH"),
+                        Precision = reader.IsDBNull("NUMERIC_PRECISION") ? null : reader.GetInt32("NUMERIC_PRECISION"),
+                        Scale = reader.IsDBNull("NUMERIC_SCALE") ? null : reader.GetInt32("NUMERIC_SCALE"),
+                        IsNullable = reader.GetString("IS_NULLABLE").Equals("YES", StringComparison.OrdinalIgnoreCase)
+                    });
+                }
+                return columns;
+            }
+            catch
+            {
+                return new List<ColumnDefinition>();
+            }
+        }
+
+        public async Task<List<IndexDefinition>> GetTableIndexesAsync(string tableName)
+        {
+            if (_connection?.State != ConnectionState.Open)
+                return new List<IndexDefinition>();
+
+            try
+            {
+                var sql = @"
+                    SELECT 
+                        INDEX_NAME,
+                        INDEX_TYPE,
+                        NON_UNIQUE,
+                        COLUMN_NAME
+                    FROM INFORMATION_SCHEMA.STATISTICS
+                    WHERE TABLE_SCHEMA = @database AND TABLE_NAME = @table
+                    ORDER BY INDEX_NAME, SEQ_IN_INDEX";
+
+                using var command = new MySqlCommand(sql, _connection);
+                command.Parameters.AddWithValue("@database", _configuration.DatabaseName);
+                command.Parameters.AddWithValue("@table", tableName);
+
+                var indexes = new List<IndexDefinition>();
+                using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    indexes.Add(new IndexDefinition
+                    {
+                        Name = reader.GetString("INDEX_NAME"),
+                        Type = reader.GetString("INDEX_TYPE"),
+                        IsUnique = !reader.GetBoolean("NON_UNIQUE"),
+                        IsPrimaryKey = reader.GetString("INDEX_NAME").Equals("PRIMARY", StringComparison.OrdinalIgnoreCase),
+                        IsUniqueConstraint = false
+                    });
+                }
+                return indexes;
+            }
+            catch
+            {
+                return new List<IndexDefinition>();
+            }
+        }
+
+        public async Task<List<ConstraintDefinition>> GetTableConstraintsAsync(string tableName)
+        {
+            if (_connection?.State != ConnectionState.Open)
+                return new List<ConstraintDefinition>();
+
+            try
+            {
+                var sql = @"
+                    SELECT 
+                        CONSTRAINT_NAME,
+                        CONSTRAINT_TYPE,
+                        CHECK_CLAUSE
+                    FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                    LEFT JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS cc ON tc.CONSTRAINT_NAME = cc.CONSTRAINT_NAME
+                    WHERE tc.TABLE_SCHEMA = @database AND tc.TABLE_NAME = @table
+                    ORDER BY CONSTRAINT_NAME";
+
+                using var command = new MySqlCommand(sql, _connection);
+                command.Parameters.AddWithValue("@database", _configuration.DatabaseName);
+                command.Parameters.AddWithValue("@table", tableName);
+
+                var constraints = new List<ConstraintDefinition>();
+                using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    constraints.Add(new ConstraintDefinition
+                    {
+                        Name = reader.GetString("CONSTRAINT_NAME"),
+                        Type = ConstraintType.Other, // Default type since we can't easily map string to enum
+                        Expression = reader.IsDBNull("CHECK_CLAUSE") ? null : reader.GetString("CHECK_CLAUSE")
+                    });
+                }
+                return constraints;
+            }
+            catch
+            {
+                return new List<ConstraintDefinition>();
+            }
+        }
+
         public void Dispose()
         {
             Dispose(true);
