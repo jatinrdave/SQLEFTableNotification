@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using SQLDBEntityNotifier.Models;
 using SQLDBEntityNotifier.Providers;
+using SQLDBEntityNotifier.Interfaces;
 
 namespace SQLDBEntityNotifier.Compatibility
 {
@@ -30,7 +31,7 @@ namespace SQLDBEntityNotifier.Compatibility
         /// <summary>
         /// Determines if a connection string is for SQL Server
         /// </summary>
-        private static bool IsSqlServerConnectionString(string connectionString)
+        public static bool IsSqlServerConnectionString(string connectionString)
         {
             if (string.IsNullOrWhiteSpace(connectionString))
                 return false;

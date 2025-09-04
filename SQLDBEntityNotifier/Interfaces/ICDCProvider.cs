@@ -140,6 +140,11 @@ namespace SQLDBEntityNotifier.Interfaces
         /// Gets or sets the transaction ID
         /// </summary>
         public string? TransactionId { get; set; }
+        
+        /// <summary>
+        /// Gets or sets additional metadata for the change
+        /// </summary>
+        public Dictionary<string, object>? Metadata { get; set; }
     }
     
     /// <summary>

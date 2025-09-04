@@ -6,6 +6,7 @@ using SQLDBEntityNotifier.Models;
 using SQLDBEntityNotifier.Helpers;
 using SQLDBEntityNotifier.Compatibility;
 using SQLDBEntityNotifier.Providers;
+using SQLDBEntityNotifier.Interfaces;
 
 namespace SQLDBEntityNotifier
 {

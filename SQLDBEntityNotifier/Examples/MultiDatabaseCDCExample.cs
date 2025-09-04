@@ -374,7 +374,7 @@ namespace SQLDBEntityNotifier.Examples
                 "Server=invalid_server;Database=InvalidDB;Integrated Security=true;"
             );
             
-            using var notificationService = new UnifiedDBNotificationService<YourEntity>(
+            var notificationService = new UnifiedDBNotificationService<YourEntity>(
                 config, 
                 "YourTable", 
                 TimeSpan.FromSeconds(10)
@@ -422,6 +422,9 @@ namespace SQLDBEntityNotifier.Examples
             
             Console.WriteLine("Error handling example completed. Press any key to continue...");
             Console.ReadKey();
+            
+            // Dispose the service
+            notificationService?.Dispose();
         }
     }
     

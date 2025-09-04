@@ -63,5 +63,18 @@ namespace SQLEFTableNotification.Console.Services
         {
             return Task.Run(() => GetRecordCount(CommandText)).Result;
         }
+
+        /// <summary>
+        /// Retrieves records with a context parameter for filtering.
+        /// </summary>
+        /// <param name="commandText">The SQL command to execute</param>
+        /// <param name="context">The context parameter for filtering</param>
+        /// <returns>A list of entities of type T</returns>
+        public async Task<List<T>> GetRecordsWithContext(string commandText, string context)
+        {
+            // For now, return the same result as GetRecords
+            // In a real implementation, you might use the context parameter for additional filtering
+            return await GetRecords(commandText);
+        }
     }
 }

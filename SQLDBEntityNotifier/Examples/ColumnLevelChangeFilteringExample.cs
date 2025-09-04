@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using System.Linq;
 using SQLDBEntityNotifier.Models;
 using SQLDBEntityNotifier.Providers;
 using System.Collections.Generic; // Added missing import for List
@@ -39,7 +40,7 @@ namespace SQLDBEntityNotifier.Examples
             {
                 Console.WriteLine($"Change detected in columns: {string.Join(", ", e.AffectedColumns ?? new List<string>())}");
                 Console.WriteLine($"Operation: {e.Operation}");
-                Console.WriteLine($"Entity count: {e.Entities.Count}");
+                Console.WriteLine($"Entity count: {e.Entities?.Count() ?? 0}");
             };
 
             // Start monitoring
