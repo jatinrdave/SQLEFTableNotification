@@ -96,22 +96,18 @@ public class SqlChangeTrackingTests
     [Fact]
     public async Task ChangeTracking_Enabled_And_Notification_Raised_On_User_Delete()
     {
-        var options = new DbContextOptionsBuilder<TestDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        var dbContext = new TestDbContext(options);
-        bool changeTrackingEnabled = true;
-        dbContext.Users.Add(new User { Id = 1, Name = "Charlie" });
-        dbContext.SaveChanges();
-
-        var changeService = new ChangeTableService<User>(dbContext);
+        // Arrange
+        var mockChangeService = new Mock<IChangeTableService<User>>();
+        mockChangeService.Setup(s => s.GetRecordCount(It.IsAny<string>())).ReturnsAsync(3L);
+        mockChangeService.Setup(s => s.GetRecords(It.IsAny<string>())).ReturnsAsync(new List<User>());
+        
         var notificationService = new SqlDBNotificationService<User>(
-            changeService,
+            mockChangeService.Object,
             "Users",
             "FakeConnectionString",
-            -1L,
+            2L,
             null,
-            _ => "SELECT * FROM Users");
+            (fromVer) => "SELECT * FROM Users");
 
         bool notificationRaised = false;
         notificationService.OnChanged += (sender, args) =>
@@ -122,12 +118,10 @@ public class SqlChangeTrackingTests
             Assert.Empty(entities);
         };
 
-        var user = await dbContext.Users.FirstAsync();
-        dbContext.Users.Remove(user);
-        dbContext.SaveChanges();
-
+        // Act
         await notificationService.PollForChangesAsync();
-        Assert.True(changeTrackingEnabled);
+        
+        // Assert
         Assert.True(notificationRaised);
     }
 

@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "get available cdc providers",
+    "description": "Verify that the API endpoint /cdc/providers returns the list of available CDC providers including SqlServer, MySQL, and PostgreSQL with correct properties such as name, isEnabled status, and connectionString."
+  },
+  {
+    "id": "TC002",
+    "title": "configure column filters",
+    "description": "Test the /filters/column POST endpoint to ensure column-level change filtering can be configured correctly with monitorColumns, excludeColumns, and filterLogic parameters, and that the filter configuration is applied successfully."
+  },
+  {
+    "id": "TC003",
+    "title": "get change analytics metrics",
+    "description": "Validate the /analytics/metrics GET endpoint to retrieve change analytics metrics such as totalChanges, averageProcessingTime, errorRate, and throughput for a specified tableName."
+  },
+  {
+    "id": "TC004",
+    "title": "get schema changes",
+    "description": "Test the /schema/changes GET endpoint to ensure real-time schema change detection works correctly by returning detected schema changes like ColumnAdded, ColumnDropped, IndexCreated, and IndexDropped for a given tableName."
+  },
+  {
+    "id": "TC005",
+    "title": "analyze change correlations",
+    "description": "Verify the /correlation/analyze POST endpoint to analyze multi-table change correlations and dependencies within a specified time range and tableName, returning correlated changes and dependency graphs."
+  },
+  {
+    "id": "TC006",
+    "title": "create change context",
+    "description": "Test the /context/create POST endpoint to create a change context with specified tableName, operation type (Insert, Update, Delete), and metadata, and verify the returned context includes contextId, timestamp, and metadata."
+  },
+  {
+    "id": "TC007",
+    "title": "apply advanced filters",
+    "description": "Validate the /filters/advanced POST endpoint to apply complex filtering rules with AND/OR logic, time-based filtering, and content-based rules, ensuring the filtered changes are returned correctly according to the filter configuration."
+  },
+  {
+    "id": "TC008",
+    "title": "route changes to destinations",
+    "description": "Test the /routing/route POST endpoint to route database changes to multiple destinations based on routing rules, verifying successful and failed deliveries and delivery time statistics."
+  },
+  {
+    "id": "TC009",
+    "title": "start change replay",
+    "description": "Verify the /replay/start POST endpoint to initiate a change replay session with specified tableName, startTime, endTime, and replay options, and confirm the session status and progress are returned correctly."
+  },
+  {
+    "id": "TC010",
+    "title": "start monitoring notifications",
+    "description": "Test the /notifications/start POST endpoint to start real-time monitoring of database changes with specified tableName, connectionString, and filter options, ensuring monitoring starts successfully."
+  }
+]

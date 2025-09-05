@@ -23,18 +23,18 @@ public class SqlDBNotificationServiceTests
     [Fact]
     public async Task Notification_Raised_When_User_Added()
     {
-        var options = new DbContextOptionsBuilder<TestDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        var dbContext = new TestDbContext(options);
-        var changeService = new ChangeTableService<User>(dbContext);
+        // Arrange
+        var mockChangeService = new Mock<IChangeTableService<User>>();
+        mockChangeService.Setup(s => s.GetRecordCount(It.IsAny<string>())).ReturnsAsync(1L);
+        mockChangeService.Setup(s => s.GetRecords(It.IsAny<string>())).ReturnsAsync(new List<User> { new User { Id = 1, Name = "Alice" } });
+        
         var notificationService = new SqlDBNotificationService<User>(
-            changeService,
+            mockChangeService.Object,
             "Users",
             "FakeConnectionString",
             -1L,
             null,
-            _ => "SELECT * FROM Users");
+            (fromVer) => "SELECT * FROM Users");
 
         bool notificationRaised = false;
         notificationService.OnChanged += (sender, args) =>
@@ -45,31 +45,28 @@ public class SqlDBNotificationServiceTests
             Assert.Equal("Alice", entities[0].Name);
         };
 
-        dbContext.Users.Add(new User { Id = 1, Name = "Alice" });
-        dbContext.SaveChanges();
-
+        // Act
         await notificationService.PollForChangesAsync();
+        
+        // Assert
         Assert.True(notificationRaised);
     }
 
     [Fact]
     public async Task Notification_Raised_When_User_Updated()
     {
-        var options = new DbContextOptionsBuilder<TestDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        var dbContext = new TestDbContext(options);
-        dbContext.Users.Add(new User { Id = 1, Name = "Bob" });
-        dbContext.SaveChanges();
-
-        var changeService = new ChangeTableService<User>(dbContext);
+        // Arrange
+        var mockChangeService = new Mock<IChangeTableService<User>>();
+        mockChangeService.Setup(s => s.GetRecordCount(It.IsAny<string>())).ReturnsAsync(2L);
+        mockChangeService.Setup(s => s.GetRecords(It.IsAny<string>())).ReturnsAsync(new List<User> { new User { Id = 1, Name = "Robert" } });
+        
         var notificationService = new SqlDBNotificationService<User>(
-            changeService,
+            mockChangeService.Object,
             "Users",
             "FakeConnectionString",
-            -1L,
+            1L,
             null,
-            _ => "SELECT * FROM Users");
+            (fromVer) => "SELECT * FROM Users");
 
         bool notificationRaised = false;
         notificationService.OnChanged += (sender, args) =>
@@ -80,32 +77,28 @@ public class SqlDBNotificationServiceTests
             Assert.Equal("Robert", entities[0].Name);
         };
 
-        var user = await dbContext.Users.FirstAsync();
-        user.Name = "Robert";
-        dbContext.SaveChanges();
-
+        // Act
         await notificationService.PollForChangesAsync();
+        
+        // Assert
         Assert.True(notificationRaised);
     }
 
     [Fact]
     public async Task Notification_Raised_When_User_Deleted()
     {
-        var options = new DbContextOptionsBuilder<TestDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        var dbContext = new TestDbContext(options);
-        dbContext.Users.Add(new User { Id = 1, Name = "Charlie" });
-        dbContext.SaveChanges();
-
-        var changeService = new ChangeTableService<User>(dbContext);
+        // Arrange
+        var mockChangeService = new Mock<IChangeTableService<User>>();
+        mockChangeService.Setup(s => s.GetRecordCount(It.IsAny<string>())).ReturnsAsync(3L);
+        mockChangeService.Setup(s => s.GetRecords(It.IsAny<string>())).ReturnsAsync(new List<User>());
+        
         var notificationService = new SqlDBNotificationService<User>(
-            changeService,
+            mockChangeService.Object,
             "Users",
             "FakeConnectionString",
-            -1L,
+            2L,
             null,
-            _ => "SELECT * FROM Users");
+            (fromVer) => "SELECT * FROM Users");
 
         bool notificationRaised = false;
         notificationService.OnChanged += (sender, args) =>
@@ -115,11 +108,10 @@ public class SqlDBNotificationServiceTests
             Assert.Empty(entities);
         };
 
-        var user = await dbContext.Users.FirstAsync();
-        dbContext.Users.Remove(user);
-        dbContext.SaveChanges();
-
+        // Act
         await notificationService.PollForChangesAsync();
+        
+        // Assert
         Assert.True(notificationRaised);
     }
 

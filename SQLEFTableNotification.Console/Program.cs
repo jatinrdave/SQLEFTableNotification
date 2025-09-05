@@ -9,6 +9,7 @@ using SQLEFTableNotification.Domain;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using SQLEFTableNotification.Entity.Context;
+using SQLEFTableNotification.Entity.UnitofWork;
 using SQLEFTableNotification.Console;
 public class MainProgram
 {

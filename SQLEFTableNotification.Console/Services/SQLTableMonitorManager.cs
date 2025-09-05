@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using SQLEFTableNotification.Domain;
 using SQLEFTableNotification.Domain.Service;
 using SQLEFTableNotification.Entity;
