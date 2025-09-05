@@ -50,7 +50,7 @@ namespace SQLDBEntityNotifier
         public event EventHandler<MetricsAggregatedEventArgs>? OnMetricsAggregated;
         public event EventHandler<SchemaChangeDetectedEventArgs>? OnSchemaChangeDetected;
         public event EventHandler<SchemaChangeImpactAnalyzedEventArgs>? OnSchemaChangeImpactAnalyzed;
-        public event EventHandler<ChangeCorrelationDetectedEventArgs>? OnChangeCorrelationDetected;
+        public event EventHandler<CorrelatedChangesDetectedEventArgs>? OnChangeCorrelationDetected;
         public event EventHandler<ChangeImpactAnalyzedEventArgs>? OnChangeImpactAnalyzed;
         
         // Phase 3 & 4: Advanced Filtering, Routing, and Replay Events
@@ -202,7 +202,7 @@ namespace SQLDBEntityNotifier
             _schemaChangeDetection.SchemaChangeImpactAnalyzed += (sender, e) => OnSchemaChangeImpactAnalyzed?.Invoke(this, e);
             
             // Wire up ChangeCorrelationEngine events
-            _changeCorrelationEngine.ChangeCorrelationDetected += (sender, e) => OnChangeCorrelationDetected?.Invoke(this, e);
+            _changeCorrelationEngine.CorrelatedChangesDetected += (sender, e) => OnChangeCorrelationDetected?.Invoke(this, e);
             _changeCorrelationEngine.ChangeImpactAnalyzed += (sender, e) => OnChangeImpactAnalyzed?.Invoke(this, e);
             
             // Wire up Phase 3 & 4 events
@@ -688,7 +688,7 @@ namespace SQLDBEntityNotifier
                 var timestamp = DateTime.UtcNow;
                 foreach (var change in changes)
                 {
-                    _changeCorrelationEngine.RecordChange(_tableName, change, timestamp);
+                    _changeCorrelationEngine.RecordChange(_tableName, change);
                 }
             }
             catch (Exception ex)

@@ -31,8 +31,6 @@ namespace SQLDBEntityNotifier.Compatibility
         /// </summary>
         public static bool IsSqlServerConnectionString(string connectionString)
         {
-        public static bool IsSqlServerConnectionString(string connectionString)
-        {
             if (string.IsNullOrWhiteSpace(connectionString))
                 return false;
             try
@@ -44,11 +42,6 @@ namespace SQLDBEntityNotifier.Compatibility
             {
                 return false;
             }
-        }
-                    !lowerConnectionString.Contains("username=")) ||
-                   (lowerConnectionString.Contains("password=") && 
-                    !lowerConnectionString.Contains("host=") && 
-                    !lowerConnectionString.Contains("username="));
         }
 
         /// <summary>

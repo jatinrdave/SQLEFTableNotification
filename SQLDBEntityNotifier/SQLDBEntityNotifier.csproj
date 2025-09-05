@@ -8,12 +8,19 @@
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
     <FileVersion>2.0.0.0</FileVersion>
     <Authors>Jatin Dave</Authors>
-    <Description>SQLDBEntityNotifier is a .NET library for database change tracking notifications across SQL Server, MySQL, and PostgreSQL. It provides event-driven notifications for insert, update, delete, and error scenarios, supporting Change Data Capture (CDC) features with minimal configuration. Easy to use, well-documented, and fully unit tested.</Description>
+    <Company>Jatin Dave</Company>
+    <Copyright>Copyright © Jatin Dave 2024</Copyright>
+    <Description>SQLDBEntityNotifier is a comprehensive .NET library for database change tracking notifications across SQL Server, MySQL, and PostgreSQL. It provides event-driven notifications for insert, update, delete, and error scenarios, supporting advanced Change Data Capture (CDC) features with minimal configuration. Features include multi-database support, column-level filtering, change analytics, schema change detection, and real-time monitoring. Easy to use, well-documented, and fully unit tested with 379+ test cases.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/jatinrdave/SQLEFTableNotification</PackageProjectUrl>
     <RepositoryUrl>https://github.com/jatinrdave/SQLEFTableNotification</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>sql-server;mysql;postgresql;change-tracking;change-data-capture;cdc;entity-framework;notifications;dotnet;efcore;events;database;realtime;dependency-injection;table-dependency;data-access;orm;open-source;multi-database</PackageTags>
+    <PackageTags>sql-server;mysql;postgresql;change-tracking;change-data-capture;cdc;entity-framework;notifications;dotnet;efcore;events;database;realtime;dependency-injection;table-dependency;data-access;orm;open-source;multi-database;analytics;monitoring;filtering</PackageTags>
+    <PackageReleaseNotes>Version 2.0.0 - Advanced CDC Features: Multi-database support (SQL Server, MySQL, PostgreSQL), Column-level filtering, Change analytics and metrics, Schema change detection, Change correlation engine, Advanced routing and filtering, Change replay and recovery, Real-time monitoring, Comprehensive test coverage (379+ tests), Full documentation and examples.</PackageReleaseNotes>
+    <NeutralLanguage>en-US</NeutralLanguage>
+    <LangVersion>10.0</LangVersion>
+    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.0" />
@@ -21,5 +28,11 @@
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.1.1" />
     <PackageReference Include="MySql.Data" Version="8.3.0" />
     <PackageReference Include="Npgsql" Version="7.0.6" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Compile Remove="Examples\**" />
+    <EmbeddedResource Remove="Examples\**" />
+    <None Remove="Examples\**" />
   </ItemGroup>
 </Project>
