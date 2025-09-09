@@ -80,7 +80,7 @@ public class CodeGenerator
             }
 
             // Generate project file if requested
-            if (_options.Templates.GenerateProjectFile)
+            if (_options.GenerateProjectFile)
             {
                 await GenerateProjectFileAsync(result, cancellationToken);
             }

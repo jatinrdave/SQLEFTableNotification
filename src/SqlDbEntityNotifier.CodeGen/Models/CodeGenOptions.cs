@@ -57,6 +57,11 @@ public sealed class CodeGenOptions
     /// Gets or sets the code generation templates.
     /// </summary>
     public TemplateOptions Templates { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets whether to generate a project file.
+    /// </summary>
+    public bool GenerateProjectFile { get; set; } = true;
 }
 
 /// <summary>
@@ -175,6 +180,11 @@ public sealed class {ClassName}
     /// Gets or sets the key attribute template.
     /// </summary>
     public string KeyAttributeTemplate { get; set; } = @"[Key]";
+
+    /// <summary>
+    /// Gets or sets whether to generate a project file.
+    /// </summary>
+    public bool GenerateProjectFile { get; set; } = true;
 }
 
 /// <summary>

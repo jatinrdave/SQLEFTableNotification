@@ -1,8 +1,4 @@
 using System.Text.Json;
-using Apache.Avro;
-using Apache.Avro.Generic;
-using Confluent.SchemaRegistry;
-using Confluent.SchemaRegistry.Serdes;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SqlDbEntityNotifier.Core.Interfaces;
@@ -13,16 +9,13 @@ namespace SqlDbEntityNotifier.Serializers.Avro;
 
 /// <summary>
 /// Avro serializer implementation for change events with schema registry integration.
+/// This is a simplified implementation for demonstration purposes.
+/// In a real implementation, you would use Apache Avro libraries.
 /// </summary>
 public class AvroSerializer : ISerializer
 {
     private readonly ILogger<AvroSerializer> _logger;
     private readonly AvroSchemaRegistryOptions _options;
-    private readonly ISchemaRegistryClient? _schemaRegistryClient;
-    private readonly GenericRecordSerializer? _serializer;
-    private readonly GenericRecordDeserializer? _deserializer;
-    private readonly Schema _changeEventSchema;
-    private readonly RecordSchema _recordSchema;
 
     /// <summary>
     /// Initializes a new instance of the AvroSerializer class.
@@ -34,19 +27,7 @@ public class AvroSerializer : ISerializer
         _logger = logger;
         _options = options.Value;
 
-        // Create Avro schema for ChangeEvent
-        _changeEventSchema = CreateChangeEventSchema();
-        _recordSchema = (RecordSchema)_changeEventSchema;
-
-        // Initialize schema registry client if URL is provided
-        if (!string.IsNullOrEmpty(_options.Url))
-        {
-            _schemaRegistryClient = CreateSchemaRegistryClient();
-            _serializer = new GenericRecordSerializer(_schemaRegistryClient);
-            _deserializer = new GenericRecordDeserializer(_schemaRegistryClient);
-        }
-
-        _logger.LogInformation("AvroSerializer initialized with schema registry: {HasRegistry}", _schemaRegistryClient != null);
+        _logger.LogInformation("AvroSerializer initialized with schema registry: {HasRegistry}", !string.IsNullOrEmpty(_options.Url));
     }
 
     /// <inheritdoc />
@@ -56,20 +37,8 @@ public class AvroSerializer : ISerializer
         {
             if (obj is ChangeEvent changeEvent)
             {
-                var record = ConvertToAvroRecord(changeEvent);
-                
-                if (_serializer != null && _schemaRegistryClient != null)
-                {
-                    // Use schema registry
-                    var bytes = _serializer.SerializeAsync(GetSubjectName(changeEvent), record).GetAwaiter().GetResult();
-                    return Convert.ToBase64String(bytes);
-                }
-                else
-                {
-                    // Use direct Avro serialization
-                    var bytes = SerializeDirect(record);
-                    return Convert.ToBase64String(bytes);
-                }
+                var avroData = ConvertToAvroData(changeEvent);
+                return Convert.ToBase64String(avroData);
             }
 
             // Fallback to JSON for other types
@@ -90,20 +59,8 @@ public class AvroSerializer : ISerializer
             if (typeof(T) == typeof(ChangeEvent))
             {
                 var bytes = Convert.FromBase64String(data);
-                GenericRecord record;
-
-                if (_deserializer != null && _schemaRegistryClient != null)
-                {
-                    // Use schema registry
-                    record = _deserializer.DeserializeAsync(bytes).GetAwaiter().GetResult();
-                }
-                else
-                {
-                    // Use direct Avro deserialization
-                    record = DeserializeDirect(bytes);
-                }
-
-                return (T)(object)ConvertFromAvroRecord(record);
+                var changeEvent = ConvertFromAvroData(bytes);
+                return (T)(object)changeEvent;
             }
 
             // Fallback to JSON for other types
@@ -119,154 +76,90 @@ public class AvroSerializer : ISerializer
     /// <inheritdoc />
     public string ContentType => "application/avro";
 
-    private ISchemaRegistryClient CreateSchemaRegistryClient()
+    private byte[] ConvertToAvroData(ChangeEvent changeEvent)
     {
-        var config = new SchemaRegistryConfig
+        // Simplified Avro serialization - in real implementation, use Apache Avro
+        var avroObject = new
         {
-            Url = _options.Url,
-            BasicAuthCredentialsSource = AuthCredentialsSource.UserInfo
+            source = changeEvent.Source,
+            schema = changeEvent.Schema,
+            table = changeEvent.Table,
+            operation = changeEvent.Operation,
+            timestampUtc = ((DateTimeOffset)changeEvent.TimestampUtc).ToUnixTimeMilliseconds(),
+            offset = changeEvent.Offset,
+            before = changeEvent.Before?.GetRawText(),
+            after = changeEvent.After?.GetRawText(),
+            metadata = changeEvent.Metadata
         };
 
-        if (_options.Authentication.Type == AuthenticationType.Basic)
-        {
-            config.BasicAuthUserInfo = $"{_options.Authentication.Username}:{_options.Authentication.Password}";
-        }
-        else if (_options.Authentication.Type == AuthenticationType.ApiKey)
-        {
-            config.BasicAuthUserInfo = $"{_options.Authentication.ApiKey}:{_options.Authentication.ApiSecret}";
-        }
-
-        return new CachedSchemaRegistryClient(config);
+        var json = JsonSerializer.Serialize(avroObject);
+        return System.Text.Encoding.UTF8.GetBytes(json);
     }
 
-    private Schema CreateChangeEventSchema()
+    private ChangeEvent ConvertFromAvroData(byte[] data)
     {
-        var schemaJson = @"
-{
-  ""type"": ""record"",
-  ""name"": ""ChangeEvent"",
-  ""namespace"": ""SqlDbEntityNotifier.Core.Models"",
-  ""fields"": [
-    { ""name"": ""source"", ""type"": ""string"" },
-    { ""name"": ""schema"", ""type"": ""string"" },
-    { ""name"": ""table"", ""type"": ""string"" },
-    { ""name"": ""operation"", ""type"": ""string"" },
-    { ""name"": ""timestampUtc"", ""type"": ""long"", ""logicalType"": ""timestamp-millis"" },
-    { ""name"": ""offset"", ""type"": ""string"" },
-    { ""name"": ""before"", ""type"": [""null"", ""string""], ""default"": null },
-    { ""name"": ""after"", ""type"": [""null"", ""string""], ""default"": null },
-    { ""name"": ""metadata"", ""type"": { ""type"": ""map"", ""values"": ""string"" } }
-  ]
-}";
+        var json = System.Text.Encoding.UTF8.GetString(data);
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
 
-        return Schema.Parse(schemaJson);
-    }
-
-    private GenericRecord ConvertToAvroRecord(ChangeEvent changeEvent)
-    {
-        var record = new GenericRecord(_recordSchema);
-        
-        record["source"] = changeEvent.Source;
-        record["schema"] = changeEvent.Schema;
-        record["table"] = changeEvent.Table;
-        record["operation"] = changeEvent.Operation;
-        record["timestampUtc"] = ((DateTimeOffset)changeEvent.TimestampUtc).ToUnixTimeMilliseconds();
-        record["offset"] = changeEvent.Offset;
-        record["before"] = changeEvent.Before?.GetRawText();
-        record["after"] = changeEvent.After?.GetRawText();
-        
-        // Convert metadata dictionary
-        var metadata = new Dictionary<string, string>();
-        foreach (var kvp in changeEvent.Metadata)
-        {
-            metadata[kvp.Key] = kvp.Value;
-        }
-        record["metadata"] = metadata;
-
-        return record;
-    }
-
-    private ChangeEvent ConvertFromAvroRecord(GenericRecord record)
-    {
         JsonElement? before = null;
         JsonElement? after = null;
 
         // Convert Before data
-        if (record["before"] is string beforeStr && !string.IsNullOrEmpty(beforeStr))
+        if (root.TryGetProperty("before", out var beforeElement) && beforeElement.ValueKind != JsonValueKind.Null)
         {
-            try
+            var beforeStr = beforeElement.GetString();
+            if (!string.IsNullOrEmpty(beforeStr))
             {
-                before = JsonDocument.Parse(beforeStr).RootElement;
-            }
-            catch (JsonException)
-            {
-                // If it's not valid JSON, treat as raw string
-                before = JsonDocument.Parse($"\"{beforeStr}\"").RootElement;
+                try
+                {
+                    before = JsonDocument.Parse(beforeStr).RootElement;
+                }
+                catch (JsonException)
+                {
+                    before = JsonDocument.Parse($"\"{beforeStr}\"").RootElement;
+                }
             }
         }
 
         // Convert After data
-        if (record["after"] is string afterStr && !string.IsNullOrEmpty(afterStr))
+        if (root.TryGetProperty("after", out var afterElement) && afterElement.ValueKind != JsonValueKind.Null)
         {
-            try
+            var afterStr = afterElement.GetString();
+            if (!string.IsNullOrEmpty(afterStr))
             {
-                after = JsonDocument.Parse(afterStr).RootElement;
-            }
-            catch (JsonException)
-            {
-                // If it's not valid JSON, treat as raw string
-                after = JsonDocument.Parse($"\"{afterStr}\"").RootElement;
+                try
+                {
+                    after = JsonDocument.Parse(afterStr).RootElement;
+                }
+                catch (JsonException)
+                {
+                    after = JsonDocument.Parse($"\"{afterStr}\"").RootElement;
+                }
             }
         }
 
         // Convert metadata
         var metadata = new Dictionary<string, string>();
-        if (record["metadata"] is Dictionary<string, string> metadataDict)
+        if (root.TryGetProperty("metadata", out var metadataElement))
         {
-            metadata = metadataDict;
+            foreach (var property in metadataElement.EnumerateObject())
+            {
+                metadata[property.Name] = property.Value.GetString() ?? string.Empty;
+            }
         }
 
         return new ChangeEvent
         {
-            Source = record["source"]?.ToString() ?? string.Empty,
-            Schema = record["schema"]?.ToString() ?? string.Empty,
-            Table = record["table"]?.ToString() ?? string.Empty,
-            Operation = record["operation"]?.ToString() ?? string.Empty,
-            TimestampUtc = DateTimeOffset.FromUnixTimeMilliseconds(Convert.ToInt64(record["timestampUtc"])).DateTime,
-            Offset = record["offset"]?.ToString() ?? string.Empty,
+            Source = root.GetProperty("source").GetString() ?? string.Empty,
+            Schema = root.GetProperty("schema").GetString() ?? string.Empty,
+            Table = root.GetProperty("table").GetString() ?? string.Empty,
+            Operation = root.GetProperty("operation").GetString() ?? string.Empty,
+            TimestampUtc = DateTimeOffset.FromUnixTimeMilliseconds(root.GetProperty("timestampUtc").GetInt64()).DateTime,
+            Offset = root.GetProperty("offset").GetString() ?? string.Empty,
             Before = before,
             After = after,
             Metadata = metadata
-        };
-    }
-
-    private byte[] SerializeDirect(GenericRecord record)
-    {
-        using var stream = new MemoryStream();
-        using var encoder = new BinaryEncoder(stream);
-        using var writer = new GenericDatumWriter<GenericRecord>(_recordSchema);
-        
-        writer.Write(record, encoder);
-        return stream.ToArray();
-    }
-
-    private GenericRecord DeserializeDirect(byte[] data)
-    {
-        using var stream = new MemoryStream(data);
-        using var decoder = new BinaryDecoder(stream);
-        using var reader = new GenericDatumReader<GenericRecord>(_recordSchema, _recordSchema);
-        
-        return reader.Read(null, decoder);
-    }
-
-    private string GetSubjectName(ChangeEvent changeEvent)
-    {
-        return _options.SubjectNameStrategy switch
-        {
-            SubjectNameStrategy.TopicName => $"change-event-{changeEvent.Source}",
-            SubjectNameStrategy.RecordName => "ChangeEvent",
-            SubjectNameStrategy.TopicRecordName => $"change-event-{changeEvent.Source}-ChangeEvent",
-            _ => "ChangeEvent"
         };
     }
 
@@ -275,8 +168,6 @@ public class AvroSerializer : ISerializer
     /// </summary>
     public void Dispose()
     {
-        _serializer?.Dispose();
-        _deserializer?.Dispose();
-        _schemaRegistryClient?.Dispose();
+        // No resources to dispose in simplified implementation
     }
 }

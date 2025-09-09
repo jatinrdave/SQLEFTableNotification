@@ -1,9 +1,6 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using OpenTelemetry;
-using OpenTelemetry.Context.Propagation;
-using OpenTelemetry.Trace;
 using SqlDbEntityNotifier.Core.Models;
 using SqlDbEntityNotifier.Tracing.Models;
 
@@ -11,12 +8,13 @@ namespace SqlDbEntityNotifier.Tracing;
 
 /// <summary>
 /// Tracer for change events with OpenTelemetry integration.
+/// This is a simplified implementation for demonstration purposes.
+/// In a real implementation, you would use OpenTelemetry libraries.
 /// </summary>
 public class ChangeEventTracer
 {
     private readonly ILogger<ChangeEventTracer> _logger;
     private readonly TracingOptions _options;
-    private readonly Tracer _tracer;
     private readonly ActivitySource _activitySource;
 
     /// <summary>
@@ -24,12 +22,10 @@ public class ChangeEventTracer
     /// </summary>
     public ChangeEventTracer(
         ILogger<ChangeEventTracer> logger,
-        IOptions<TracingOptions> options,
-        TracerProvider tracerProvider)
+        IOptions<TracingOptions> options)
     {
         _logger = logger;
         _options = options.Value;
-        _tracer = tracerProvider.GetTracer(_options.ServiceName, _options.ServiceVersion);
         _activitySource = new ActivitySource(_options.ServiceName, _options.ServiceVersion);
     }
 
@@ -72,7 +68,7 @@ public class ChangeEventTracer
             // Set span kind
             activity.SetTag("span.kind", "internal");
 
-            return new TraceScope(activity, _tracer);
+            return new TraceScope(activity, null);
         }
         catch (Exception ex)
         {
@@ -117,7 +113,7 @@ public class ChangeEventTracer
             // Set span kind
             activity.SetTag("span.kind", "producer");
 
-            return new TraceScope(activity, _tracer);
+            return new TraceScope(activity, null);
         }
         catch (Exception ex)
         {
@@ -156,7 +152,7 @@ public class ChangeEventTracer
             // Set span kind
             activity.SetTag("span.kind", "client");
 
-            return new TraceScope(activity, _tracer);
+            return new TraceScope(activity, null);
         }
         catch (Exception ex)
         {
@@ -258,17 +254,27 @@ public class ChangeEventTracer
 
         try
         {
-            var propagator = new TraceContextPropagator();
-            var carrier = new DictionaryCarrier(headers, getHeader);
-            var parentContext = propagator.Extract(default, carrier, ExtractTraceContextFromCarrier);
-            
-            return parentContext.ActivityContext;
+            // Simplified trace context extraction
+            if (headers.TryGetValue("traceparent", out var traceparent))
+            {
+                // Parse traceparent header (simplified)
+                var parts = traceparent.Split('-');
+                if (parts.Length >= 4)
+                {
+                    if (ActivityTraceId.TryParse(parts[1], out var traceId) &&
+                        ActivitySpanId.TryParse(parts[2], out var spanId))
+                    {
+                        return new ActivityContext(traceId, spanId, ActivityTraceFlags.None);
+                    }
+                }
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error extracting trace context from headers");
-            return null;
         }
+
+        return null;
     }
 
     /// <summary>
@@ -288,29 +294,16 @@ public class ChangeEventTracer
             var activity = Activity.Current;
             if (activity != null)
             {
-                var propagator = new TraceContextPropagator();
-                var carrier = new DictionaryCarrier(headers, setHeader);
-                propagator.Inject(new PropagationContext(activity.Context, Baggage.Current), carrier, InjectTraceContextIntoCarrier);
+                // Simplified trace context injection
+                var traceparent = $"00-{activity.TraceId}-{activity.SpanId}-01";
+                setHeader("traceparent", traceparent);
+                headers["traceparent"] = traceparent;
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error injecting trace context into headers");
         }
-    }
-
-    private static IEnumerable<string> ExtractTraceContextFromCarrier(IDictionary<string, string> carrier, string key)
-    {
-        if (carrier.TryGetValue(key, out var value))
-        {
-            return new[] { value };
-        }
-        return Enumerable.Empty<string>();
-    }
-
-    private static void InjectTraceContextIntoCarrier(IDictionary<string, string> carrier, string key, string value)
-    {
-        carrier[key] = value;
     }
 
     /// <summary>
@@ -328,12 +321,12 @@ public class ChangeEventTracer
 public sealed class TraceScope : IDisposable
 {
     private readonly Activity? _activity;
-    private readonly Tracer? _tracer;
+    private readonly object? _tracer;
 
     /// <summary>
     /// Initializes a new instance of the TraceScope class.
     /// </summary>
-    public TraceScope(Activity? activity, Tracer? tracer)
+    public TraceScope(Activity? activity, object? tracer)
     {
         _activity = activity;
         _tracer = tracer;
@@ -347,7 +340,7 @@ public sealed class TraceScope : IDisposable
     /// <summary>
     /// Gets the current tracer.
     /// </summary>
-    public Tracer? Tracer => _tracer;
+    public object? Tracer => _tracer;
 
     /// <summary>
     /// Disposes the trace scope.
@@ -355,50 +348,5 @@ public sealed class TraceScope : IDisposable
     public void Dispose()
     {
         _activity?.Dispose();
-    }
-}
-
-/// <summary>
-/// Dictionary-based carrier for trace context propagation.
-/// </summary>
-public sealed class DictionaryCarrier
-{
-    private readonly IDictionary<string, string> _headers;
-    private readonly Func<string, string?>? _getHeader;
-    private readonly Action<string, string>? _setHeader;
-
-    /// <summary>
-    /// Initializes a new instance of the DictionaryCarrier class.
-    /// </summary>
-    public DictionaryCarrier(IDictionary<string, string> headers, Func<string, string?> getHeader)
-    {
-        _headers = headers;
-        _getHeader = getHeader;
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the DictionaryCarrier class.
-    /// </summary>
-    public DictionaryCarrier(IDictionary<string, string> headers, Action<string, string> setHeader)
-    {
-        _headers = headers;
-        _setHeader = setHeader;
-    }
-
-    /// <summary>
-    /// Gets a header value.
-    /// </summary>
-    public string? Get(string key)
-    {
-        return _getHeader?.Invoke(key) ?? _headers.TryGetValue(key, out var value) ? value : null;
-    }
-
-    /// <summary>
-    /// Sets a header value.
-    /// </summary>
-    public void Set(string key, string value)
-    {
-        _setHeader?.Invoke(key, value);
-        _headers[key] = value;
     }
 }

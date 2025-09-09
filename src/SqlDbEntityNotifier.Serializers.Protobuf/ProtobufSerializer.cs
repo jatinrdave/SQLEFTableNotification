@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Google.Protobuf;
 using Microsoft.Extensions.Logging;
 using SqlDbEntityNotifier.Core.Interfaces;
 using SqlDbEntityNotifier.Core.Models;
@@ -51,7 +50,7 @@ public class ProtobufSerializer : ISerializer
             if (typeof(T) == typeof(ChangeEvent))
             {
                 var bytes = Convert.FromBase64String(data);
-                var proto = ChangeEventProto.Parser.ParseFrom(bytes);
+                var proto = ChangeEventProto.FromByteArray(bytes);
                 return (T)(object)ConvertFromProto(proto);
             }
 
@@ -77,7 +76,7 @@ public class ProtobufSerializer : ISerializer
             Table = changeEvent.Table,
             Operation = changeEvent.Operation,
             Offset = changeEvent.Offset,
-            TimestampUtc = Timestamp.FromDateTime(changeEvent.TimestampUtc)
+            TimestampUtc = ((DateTimeOffset)changeEvent.TimestampUtc).ToUnixTimeMilliseconds()
         };
 
         // Convert Before data
@@ -95,11 +94,7 @@ public class ProtobufSerializer : ISerializer
         // Convert metadata
         foreach (var metadata in changeEvent.Metadata)
         {
-            proto.Metadata.Add(new MetadataEntry
-            {
-                Key = metadata.Key,
-                Value = metadata.Value
-            });
+            proto.Metadata[metadata.Key] = metadata.Value;
         }
 
         return proto;
@@ -138,24 +133,17 @@ public class ProtobufSerializer : ISerializer
             }
         }
 
-        // Convert metadata
-        var metadata = new Dictionary<string, string>();
-        foreach (var entry in proto.Metadata)
-        {
-            metadata[entry.Key] = entry.Value;
-        }
-
         return new ChangeEvent
         {
             Source = proto.Source,
             Schema = proto.Schema,
             Table = proto.Table,
             Operation = proto.Operation,
-            TimestampUtc = proto.TimestampUtc.ToDateTime(),
+            TimestampUtc = DateTimeOffset.FromUnixTimeMilliseconds(proto.TimestampUtc).DateTime,
             Offset = proto.Offset,
             Before = before,
             After = after,
-            Metadata = metadata
+            Metadata = proto.Metadata
         };
     }
 }
