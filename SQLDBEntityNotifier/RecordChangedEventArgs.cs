@@ -15,6 +15,11 @@ namespace SQLDBEntityNotifier
         public IEnumerable<T>? Entities { get; set; }
 
         /// <summary>
+        /// Gets or sets the table name where the change occurred
+        /// </summary>
+        public string? TableName { get; set; }
+
+        /// <summary>
         /// Gets or sets the change context information
         /// </summary>
         public ChangeContextInfo? ChangeContext { get; set; }

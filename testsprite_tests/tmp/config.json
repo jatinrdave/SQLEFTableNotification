@@ -1,0 +1,16 @@
+{
+  "status": "commited",
+  "type": "backend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:5173",
+  "backendAuthType": "public",
+  "executionArgs": {
+    "projectName": "SQLEFTableNotification",
+    "projectPath": "D:\\AIProject\\SQLEFNotificationService\\SQLEFTableNotification",
+    "testIds": [],
+    "additionalInstruction": "Execute comprehensive testing of all SQLDBEntityNotifier features including CDC providers, advanced engines, performance testing, and security validation. Focus on maintaining the existing 379 passing tests while adding new coverage for advanced features.",
+    "envs": {
+      "API_KEY": "sk-user-kDXTvMO753aXHRiJXIVsJNozcOqCCDo_rs6lEG9Bl01lupuQOv-CWpgRA7vdMYrB3OJSveq3J5r1TtcoaVwDqq9L2U1vEVfoogE8UhvggqTQopvLUBeMvFtEQG-W6D-pnjI"
+    }
+  }
+}
