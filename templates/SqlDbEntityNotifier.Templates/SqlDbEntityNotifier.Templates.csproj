@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>SqlDbEntityNotifier.Templates</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>SQLDBEntityNotifier Team</Authors>
+    <Description>dotnet new templates for SQLDBEntityNotifier</Description>
+    <PackageTags>template;cdc;change-data-capture;dotnet-new</PackageTags>
+    <RepositoryUrl>https://github.com/yourorg/SqlDbEntityNotifier</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="templates\**\*" Exclude="templates\**\bin\**;templates\**\obj\**" />
+    <Compile Remove="templates\**\*" />
+  </ItemGroup>
+
+</Project>
