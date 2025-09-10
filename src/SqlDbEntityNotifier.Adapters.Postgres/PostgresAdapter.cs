@@ -5,6 +5,7 @@ using Npgsql;
 using Npgsql.Replication;
 using SqlDbEntityNotifier.Core.Interfaces;
 using SqlDbEntityNotifier.Core.Models;
+using SqlDbEntityNotifier.Core.BulkOperations;
 using SqlDbEntityNotifier.Adapters.Postgres.Models;
 
 namespace SqlDbEntityNotifier.Adapters.Postgres;
@@ -17,6 +18,7 @@ public class PostgresAdapter : IDbAdapter
     private readonly PostgresAdapterOptions _options;
     private readonly ILogger<PostgresAdapter> _logger;
     private readonly IOffsetStore _offsetStore;
+    private readonly BulkOperationDetector? _bulkOperationDetector;
     private LogicalReplicationConnection? _connection;
     private PgOutputReplicationSlot? _slot;
     private CancellationTokenSource? _cancellationTokenSource;
@@ -34,11 +36,13 @@ public class PostgresAdapter : IDbAdapter
     public PostgresAdapter(
         IOptions<PostgresAdapterOptions> options,
         ILogger<PostgresAdapter> logger,
-        IOffsetStore offsetStore)
+        IOffsetStore offsetStore,
+        BulkOperationDetector? bulkOperationDetector = null)
     {
         _options = options.Value;
         _logger = logger;
         _offsetStore = offsetStore;
+        _bulkOperationDetector = bulkOperationDetector;
     }
 
     /// <inheritdoc />
@@ -164,6 +168,12 @@ public class PostgresAdapter : IDbAdapter
                     var changeEvent = await ProcessReplicationMessageAsync(message, cancellationToken);
                     if (changeEvent != null)
                     {
+                        // Process bulk operation detection
+                        if (_bulkOperationDetector != null)
+                        {
+                            await _bulkOperationDetector.ProcessChangeEventAsync(changeEvent, cancellationToken);
+                        }
+
                         await onChangeEvent(changeEvent, cancellationToken);
                         await SetOffsetAsync(changeEvent.Offset, cancellationToken);
                     }
@@ -261,6 +271,23 @@ public class PostgresAdapter : IDbAdapter
 
             var offset = $"{message.WalStart:X8}/{message.WalEnd:X8}";
 
+            // Detect bulk operations based on change array size
+            var isBulkOperation = changeArray.GetArrayLength() > 1;
+            var metadata = new Dictionary<string, string>
+            {
+                ["wal_start"] = message.WalStart.ToString(),
+                ["wal_end"] = message.WalEnd.ToString(),
+                ["timestamp"] = timestamp,
+                ["bulk_operation"] = isBulkOperation.ToString().ToLowerInvariant(),
+                ["affected_rows"] = changeArray.GetArrayLength().ToString()
+            };
+
+            // Add transaction information if available
+            if (jsonDoc.RootElement.TryGetProperty("xid", out var xidElement))
+            {
+                metadata["transaction_id"] = xidElement.GetInt32().ToString();
+            }
+
             return ChangeEvent.Create(
                 Source,
                 schema,
@@ -269,12 +296,7 @@ public class PostgresAdapter : IDbAdapter
                 offset,
                 before,
                 after,
-                new Dictionary<string, string>
-                {
-                    ["wal_start"] = message.WalStart.ToString(),
-                    ["wal_end"] = message.WalEnd.ToString(),
-                    ["timestamp"] = timestamp
-                });
+                metadata);
         }
 
         return null;

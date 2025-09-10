@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SqlDbEntityNotifier.Core.Interfaces;
 using SqlDbEntityNotifier.Core.Models;
+using SqlDbEntityNotifier.Core.BulkOperations;
 using SqlDbEntityNotifier.Adapters.Sqlite.Models;
 
 namespace SqlDbEntityNotifier.Adapters.Sqlite;
@@ -16,6 +17,7 @@ public class SqliteAdapter : IDbAdapter
     private readonly SqliteAdapterOptions _options;
     private readonly ILogger<SqliteAdapter> _logger;
     private readonly IOffsetStore _offsetStore;
+    private readonly BulkOperationDetector? _bulkOperationDetector;
     private SqliteConnection? _connection;
     private CancellationTokenSource? _cancellationTokenSource;
     private Task? _pollingTask;
@@ -32,11 +34,13 @@ public class SqliteAdapter : IDbAdapter
     public SqliteAdapter(
         IOptions<SqliteAdapterOptions> options,
         ILogger<SqliteAdapter> logger,
-        IOffsetStore offsetStore)
+        IOffsetStore offsetStore,
+        BulkOperationDetector? bulkOperationDetector = null)
     {
         _options = options.Value;
         _logger = logger;
         _offsetStore = offsetStore;
+        _bulkOperationDetector = bulkOperationDetector;
     }
 
     /// <inheritdoc />
@@ -234,6 +238,12 @@ public class SqliteAdapter : IDbAdapter
             var changeEvent = CreateChangeEventFromReader(reader);
             if (changeEvent != null)
             {
+                // Process bulk operation detection
+                if (_bulkOperationDetector != null)
+                {
+                    await _bulkOperationDetector.ProcessChangeEventAsync(changeEvent, cancellationToken);
+                }
+
                 await onChangeEvent(changeEvent, cancellationToken);
                 _lastProcessedId = reader.GetInt64("id");
                 await SetOffsetAsync(_lastProcessedId.ToString(), cancellationToken);
@@ -278,6 +288,16 @@ public class SqliteAdapter : IDbAdapter
                 }
             }
 
+            // For SQLite, we'll detect bulk operations based on timing patterns
+            // This is a simplified approach - in production, you might want to track
+            // transaction boundaries or use more sophisticated detection
+            var metadata = new Dictionary<string, string>
+            {
+                ["timestamp"] = timestamp.ToString("O"),
+                ["change_id"] = id.ToString(),
+                ["affected_rows"] = "1" // SQLite triggers fire per row
+            };
+
             return ChangeEvent.Create(
                 Source,
                 schemaName,
@@ -286,11 +306,7 @@ public class SqliteAdapter : IDbAdapter
                 id.ToString(),
                 before,
                 after,
-                new Dictionary<string, string>
-                {
-                    ["timestamp"] = timestamp.ToString("O"),
-                    ["change_id"] = id.ToString()
-                });
+                metadata);
         }
         catch (Exception ex)
         {

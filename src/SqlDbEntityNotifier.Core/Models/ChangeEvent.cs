@@ -24,7 +24,7 @@ public sealed class ChangeEvent
     public string Table { get; init; } = string.Empty;
 
     /// <summary>
-    /// Gets the operation type: INSERT, UPDATE, or DELETE.
+    /// Gets the operation type: INSERT, UPDATE, DELETE, BULK_INSERT, BULK_UPDATE, or BULK_DELETE.
     /// </summary>
     public string Operation { get; init; } = string.Empty;
 

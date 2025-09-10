@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using SqlDbEntityNotifier.Core.Interfaces;
 using SqlDbEntityNotifier.Core.Serializers;
+using SqlDbEntityNotifier.Core.BulkOperations;
+using SqlDbEntityNotifier.Core.Filters;
 
 namespace SqlDbEntityNotifier.Core.Extensions;
 
@@ -26,6 +28,10 @@ public static class ServiceCollectionExtensions
 
         // Register default serializer
         services.AddSingleton<ISerializer, JsonSerializer>();
+
+        // Register bulk operation detection services
+        services.AddSingleton<BulkOperationDetector>();
+        services.AddSingleton<BulkOperationFilterEngine>();
 
         return services;
     }
