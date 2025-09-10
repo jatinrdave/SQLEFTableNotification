@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>SqlDbEntityNotifier.Adapters.MySQL</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>SQLDBEntityNotifier Team</Authors>
+    <Description>MySQL adapter for SQLDBEntityNotifier CDC platform using binary log replication</Description>
+    <PackageTags>cdc;change-data-capture;mysql;binary-log;replication</PackageTags>
+    <RepositoryUrl>https://github.com/yourorg/SqlDbEntityNotifier</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.0" />
+    <PackageReference Include="MySqlConnector" Version="2.3.5" />
+    <PackageReference Include="System.Text.Json" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SqlDbEntityNotifier.Core\SqlDbEntityNotifier.Core.csproj" />
+  </ItemGroup>
+
+</Project>
