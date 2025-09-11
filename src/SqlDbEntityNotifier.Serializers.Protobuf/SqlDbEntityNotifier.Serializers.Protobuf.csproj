@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>SqlDbEntityNotifier.Serializers.Protobuf</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>SQLDBEntityNotifier Team</Authors>
+    <Description>Protobuf serializer for SQLDBEntityNotifier CDC platform</Description>
+    <PackageTags>cdc;change-data-capture;protobuf;serializer;events</PackageTags>
+    <RepositoryUrl>https://github.com/yourorg/SqlDbEntityNotifier</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.25.1" />
+    <PackageReference Include="Grpc.Tools" Version="2.59.0" PrivateAssets="All" />
+    <PackageReference Include="System.Text.Json" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SqlDbEntityNotifier.Core\SqlDbEntityNotifier.Core.csproj" />
+  </ItemGroup>
+
+</Project>

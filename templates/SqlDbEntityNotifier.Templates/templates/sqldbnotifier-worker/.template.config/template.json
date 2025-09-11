@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "SQLDBEntityNotifier Team",
+  "classifications": [ "Console", "Worker", "CDC", "Change Data Capture" ],
+  "identity": "SqlDbEntityNotifier.Worker",
+  "name": "SQLDBEntityNotifier Worker",
+  "shortName": "sqldbnotifier-worker",
+  "sourceName": "SqlDbEntityNotifierWorker",
+  "preferNameDirectory": true,
+  "description": "A worker service template for SQLDBEntityNotifier CDC platform",
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "symbols": {
+    "DatabaseType": {
+      "type": "parameter",
+      "description": "The type of database to use",
+      "datatype": "choice",
+      "choices": [
+        {
+          "choice": "sqlite",
+          "description": "SQLite database"
+        },
+        {
+          "choice": "postgres",
+          "description": "PostgreSQL database"
+        }
+      ],
+      "defaultValue": "sqlite"
+    },
+    "PublisherType": {
+      "type": "parameter",
+      "description": "The type of publisher to use",
+      "datatype": "choice",
+      "choices": [
+        {
+          "choice": "webhook",
+          "description": "HTTP Webhook publisher"
+        },
+        {
+          "choice": "kafka",
+          "description": "Apache Kafka publisher"
+        }
+      ],
+      "defaultValue": "webhook"
+    }
+  },
+  "sources": [
+    {
+      "modifiers": [
+        {
+          "condition": "(!(DatabaseType == \"postgres\"))",
+          "exclude": [
+            "**/PostgresAdapter.cs",
+            "**/PostgresAdapterOptions.cs"
+          ]
+        },
+        {
+          "condition": "(!(DatabaseType == \"sqlite\"))",
+          "exclude": [
+            "**/SqliteAdapter.cs",
+            "**/SqliteAdapterOptions.cs"
+          ]
+        },
+        {
+          "condition": "(!(PublisherType == \"kafka\"))",
+          "exclude": [
+            "**/KafkaPublisher.cs",
+            "**/KafkaPublisherOptions.cs"
+          ]
+        },
+        {
+          "condition": "(!(PublisherType == \"webhook\"))",
+          "exclude": [
+            "**/WebhookPublisher.cs",
+            "**/WebhookPublisherOptions.cs"
+          ]
+        }
+      ]
+    }
+  ]
+}
